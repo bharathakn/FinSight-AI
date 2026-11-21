@@ -267,6 +267,7 @@ def make_gateway_app(settings: Settings | None = None, backend=None):
     ref = B.Reference(root)
     analyses = B.AnalysisStore()
     slots = threading.BoundedSemaphore(2)            # ≤ 2 concurrent analyses: protects a 512 MB instance
+    demo_cache: dict[int, str] = {}                  # sample size → pinned analysis id (the demo data never changes)
 
     def _run(df, source, request):
         if not slots.acquire(blocking=False):
@@ -304,8 +305,16 @@ def make_gateway_app(settings: Settings | None = None, backend=None):
     @app.post("/analyze/demo", tags=["analyze"])
     @_errors
     def analyze_demo(body: DemoRequest, request: Request):
-        """Analyse the built-in demo dataset (all 10,000 transactions, or a stratified sample)."""
-        return _run(ref.demo(body.sample), {"type": "demo", "rows": body.sample or len(ref.history)}, request)
+        """Analyse the built-in demo dataset (all 10,000 transactions, or a stratified sample).
+        The result is deterministic, so it is computed once per sample size and then served from memory."""
+        key = body.sample or 0
+        if key in demo_cache:
+            return ok(analyses.get(demo_cache[key]).summary | {"cached": True})
+        resp = _run(ref.demo(body.sample), {"type": "demo", "rows": body.sample or len(ref.history)}, request)
+        aid = json.loads(resp.body)["analysis_id"]
+        analyses.pin(analyses.get(aid))
+        demo_cache[key] = aid
+        return resp
 
     @app.post("/analyze/simulate", tags=["analyze"])
     @_errors

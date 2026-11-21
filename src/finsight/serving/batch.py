@@ -460,6 +460,7 @@ class Analysis:
 class AnalysisStore:
     def __init__(self):
         self._d: dict[str, Analysis] = {}
+        self.pinned: dict[str, Analysis] = {}      # deterministic demo results: computed once, never evicted
         self._lock = threading.Lock()
 
     def put(self, a: Analysis) -> None:
@@ -475,8 +476,15 @@ class AnalysisStore:
             self._d[a.id] = a
 
 
+    def pin(self, a: Analysis) -> None:
+        with self._lock:
+            self._d.pop(a.id, None)
+            self.pinned[a.id] = a
+
     def get(self, aid: str) -> Analysis:
         with self._lock:
+            if aid in self.pinned:
+                return self.pinned[aid]
             a = self._d.get(aid)
             if a is None or time.time() - a.created > TTL_SECONDS:
                 raise KeyError(f"analysis {aid} (results are kept for 30 minutes)")

@@ -50,7 +50,7 @@ function Inputs({ schema, busy, onRun }: { schema: Schema | null; busy: boolean;
   const toggle = (a: string) => setAttacks(attacks.includes(a) ? attacks.filter((x) => x !== a) : [...attacks, a]);
   return (
     <div className="grid g3">
-      <Card title="1 · Demo dataset" note="10,000 synthetic Indian payments (August 2026) with ground-truth labels, so the page can also show how accurate the model is.">
+      <Card title="1 · Demo dataset" note="10,000 synthetic Indian payments (August 2026) with ground-truth labels, so the page can also show how accurate the model is. On the free cloud server the first run takes about half a minute; after that the demo results are cached and open instantly.">
         <p className="small ink2">Run the complete pipeline (validation → features → model, anomaly detector, network flags, rules, sanctions) on the built-in dataset.</p>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button className="primary" disabled={busy} onClick={() => onRun("demo dataset (10,000)", () => api.post<Summary>("/analyze/demo", {}, 120000))}>Analyze all 10,000</button>
