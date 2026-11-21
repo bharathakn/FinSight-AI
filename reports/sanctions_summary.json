@@ -1,0 +1,44 @@
+{
+  "entities": 20332,
+  "name_variants": 27263,
+  "by_source": {
+    "OFAC": 19321,
+    "UN": 1011
+  },
+  "by_kind": {
+    "primary": 20332,
+    "alias": 6931
+  },
+  "customer_screening_threshold_sweep": [
+    {
+      "threshold": 70,
+      "alerts": 279,
+      "false_positive_rate": 0.2325
+    },
+    {
+      "threshold": 75,
+      "alerts": 66,
+      "false_positive_rate": 0.055
+    },
+    {
+      "threshold": 80,
+      "alerts": 20,
+      "false_positive_rate": 0.0167
+    },
+    {
+      "threshold": 85,
+      "alerts": 2,
+      "false_positive_rate": 0.0017
+    },
+    {
+      "threshold": 90,
+      "alerts": 2,
+      "false_positive_rate": 0.0017
+    },
+    {
+      "threshold": 95,
+      "alerts": 1,
+      "false_positive_rate": 0.0008
+    }
+  ]
+}

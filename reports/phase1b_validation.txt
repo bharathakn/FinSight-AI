@@ -1,0 +1,8 @@
+=== v1.0  network-feature AUC: {'forward_ratio': 0.679, 'same_community': 0.627, 'sender_community_size': 0.519, 'receiver_community_size': 0.516, 'receiver_distinct_senders_7d': 0.513, 'sender_pagerank': 0.51, 'receiver_pagerank': 0.509, 'receiver_clustering'
+v1.0 A RF F1 0.724 ± 0.018
+v1.0 B RF F1 0.874 ± 0.010
+v1.0 C RF F1 0.872 ± 0.012
+=== v1.1  network-feature AUC: {'forward_ratio': 0.644, 'same_community': 0.607, 'sec_since_sender_last_inflow': 0.583, 'sender_tx_24h': 0.566, 'sender_distinct_receivers_24h': 0.566, 'receiver_tx_in_24h': 0.565, 'receiver_distinct_senders_24h': 0.565, 'receiv
+v1.1 A RF F1 0.754 ± 0.008
+v1.1 B RF F1 0.810 ± 0.007
+v1.1 C RF F1 0.839 ± 0.009

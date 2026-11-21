@@ -1,0 +1,418 @@
+{
+  "tables": [
+    {
+      "table": "transactions",
+      "rows": 10000,
+      "columns": 32,
+      "completeness": 1.0,
+      "duplicate_rows": 0,
+      "duplicate_rate": 0.0,
+      "null_columns": {},
+      "row_feature_coverage_mean": 1.0,
+      "valid_timestamps": {
+        "timestamp": 1.0
+      },
+      "constant_columns": [
+        "status"
+      ]
+    },
+    {
+      "table": "targets",
+      "rows": 10000,
+      "columns": 6,
+      "completeness": 0.863333,
+      "duplicate_rows": 0,
+      "duplicate_rate": 0.0,
+      "null_columns": {
+        "alert_id": 8200
+      },
+      "row_feature_coverage_mean": 0.863333,
+      "valid_timestamps": {},
+      "constant_columns": []
+    },
+    {
+      "table": "accounts",
+      "rows": 1500,
+      "columns": 11,
+      "completeness": 1.0,
+      "duplicate_rows": 0,
+      "duplicate_rate": 0.0,
+      "null_columns": {},
+      "row_feature_coverage_mean": 1.0,
+      "valid_timestamps": {
+        "account_open_date": 1.0
+      },
+      "constant_columns": []
+    },
+    {
+      "table": "customers",
+      "rows": 1200,
+      "columns": 11,
+      "completeness": 1.0,
+      "duplicate_rows": 0,
+      "duplicate_rate": 0.0,
+      "null_columns": {},
+      "row_feature_coverage_mean": 1.0,
+      "valid_timestamps": {
+        "customer_creation_date": 1.0
+      },
+      "constant_columns": []
+    },
+    {
+      "table": "devices",
+      "rows": 1400,
+      "columns": 9,
+      "completeness": 1.0,
+      "duplicate_rows": 0,
+      "duplicate_rate": 0.0,
+      "null_columns": {},
+      "row_feature_coverage_mean": 1.0,
+      "valid_timestamps": {
+        "first_seen_timestamp": 1.0
+      },
+      "constant_columns": []
+    },
+    {
+      "table": "beneficiaries",
+      "rows": 2000,
+      "columns": 7,
+      "completeness": 1.0,
+      "duplicate_rows": 0,
+      "duplicate_rate": 0.0,
+      "null_columns": {},
+      "row_feature_coverage_mean": 1.0,
+      "valid_timestamps": {
+        "beneficiary_added_timestamp": 1.0
+      },
+      "constant_columns": []
+    },
+    {
+      "table": "edges",
+      "rows": 10000,
+      "columns": 8,
+      "completeness": 1.0,
+      "duplicate_rows": 0,
+      "duplicate_rate": 0.0,
+      "null_columns": {},
+      "row_feature_coverage_mean": 1.0,
+      "valid_timestamps": {
+        "timestamp": 1.0
+      },
+      "constant_columns": [
+        "rel_type"
+      ]
+    }
+  ],
+  "referential_integrity": [
+    {
+      "fk": "transactions.sender_account_id \u2192 accounts.account_id",
+      "rows": 10000,
+      "matched_rate": 1.0,
+      "orphans": 0
+    },
+    {
+      "fk": "transactions.receiver_account_id \u2192 accounts.account_id",
+      "rows": 10000,
+      "matched_rate": 1.0,
+      "orphans": 0
+    },
+    {
+      "fk": "transactions.sender_customer_id \u2192 customers.customer_id",
+      "rows": 10000,
+      "matched_rate": 1.0,
+      "orphans": 0
+    },
+    {
+      "fk": "transactions.receiver_customer_id \u2192 customers.customer_id",
+      "rows": 10000,
+      "matched_rate": 1.0,
+      "orphans": 0
+    },
+    {
+      "fk": "transactions.device_id \u2192 devices.device_id",
+      "rows": 10000,
+      "matched_rate": 1.0,
+      "orphans": 0
+    },
+    {
+      "fk": "targets.transaction_id \u2192 transactions.transaction_id",
+      "rows": 10000,
+      "matched_rate": 1.0,
+      "orphans": 0
+    },
+    {
+      "fk": "accounts.customer_id \u2192 customers.customer_id",
+      "rows": 1500,
+      "matched_rate": 1.0,
+      "orphans": 0
+    },
+    {
+      "fk": "devices.customer_id \u2192 customers.customer_id",
+      "rows": 1400,
+      "matched_rate": 1.0,
+      "orphans": 0
+    },
+    {
+      "fk": "beneficiaries.sender_account_id \u2192 accounts.account_id",
+      "rows": 2000,
+      "matched_rate": 1.0,
+      "orphans": 0
+    },
+    {
+      "fk": "beneficiaries.receiver_account_id \u2192 accounts.account_id",
+      "rows": 2000,
+      "matched_rate": 1.0,
+      "orphans": 0
+    },
+    {
+      "fk": "edges.src \u2192 accounts.account_id",
+      "rows": 10000,
+      "matched_rate": 1.0,
+      "orphans": 0
+    },
+    {
+      "fk": "edges.dst \u2192 accounts.account_id",
+      "rows": 10000,
+      "matched_rate": 1.0,
+      "orphans": 0
+    },
+    {
+      "fk": "transactions.(sender,receiver) \u2192 beneficiaries.(sender,receiver)",
+      "rows": 10000,
+      "matched_rate": 0.0009,
+      "orphans": 9991
+    }
+  ],
+  "redundant_pairs": [
+    {
+      "a": "channel",
+      "b": "transaction_type",
+      "mapping": {
+        "UPI": "P2P",
+        "NEFT": "C2B",
+        "RTGS": "B2B"
+      }
+    }
+  ],
+  "label_balance": {
+    "risk_label": {
+      "LEGITIMATE": 0.82,
+      "FRAUDULENT": 0.1348,
+      "BORDERLINE": 0.0452
+    },
+    "is_fraud": {
+      "0": 0.8652,
+      "1": 0.1348
+    }
+  },
+  "label_crosstab": {
+    "0": {
+      "BORDERLINE": 0,
+      "FRAUDULENT": 0,
+      "LEGITIMATE": 8200
+    },
+    "1": {
+      "BORDERLINE": 452,
+      "FRAUDULENT": 1348,
+      "LEGITIMATE": 0
+    }
+  },
+  "label_proxies": [
+    {
+      "column": "graph_edges.rapid_forward_delta_sec",
+      "nonzero_rows": 316,
+      "fraud_rate_when_nonzero": 0.807,
+      "fraud_rate_when_zero": 0.1129,
+      "scenarios_when_nonzero": [
+        "SCENARIO_11_SHARED_DEVICE_IP",
+        "SCENARIO_1_NORMAL_LEGITIMATE",
+        "SCENARIO_3_RAPID_BURST",
+        "SCENARIO_7_LAYERING_NETWORK",
+        "SCENARIO_8_MULE_PASS_THROUGH"
+      ]
+    }
+  ],
+  "leakage_scan": [
+    {
+      "feature": "is_flagged_alert",
+      "auc": 0.9739,
+      "flag": "SUSPECT"
+    },
+    {
+      "feature": "log_amount",
+      "auc": 0.8499,
+      "flag": ""
+    },
+    {
+      "feature": "amount_inr",
+      "auc": 0.8499,
+      "flag": ""
+    },
+    {
+      "feature": "amount_ratio_vs_30d_avg",
+      "auc": 0.8081,
+      "flag": ""
+    },
+    {
+      "feature": "time_since_beneficiary_added_min",
+      "auc": 0.786,
+      "flag": ""
+    },
+    {
+      "feature": "distance_from_home_km",
+      "auc": 0.7388,
+      "flag": ""
+    },
+    {
+      "feature": "is_new_device",
+      "auc": 0.6766,
+      "flag": ""
+    },
+    {
+      "feature": "tx_long",
+      "auc": 0.6444,
+      "flag": ""
+    },
+    {
+      "feature": "is_new_beneficiary",
+      "auc": 0.6391,
+      "flag": ""
+    },
+    {
+      "feature": "tx_lat",
+      "auc": 0.6337,
+      "flag": ""
+    },
+    {
+      "feature": "account_balance_before",
+      "auc": 0.5817,
+      "flag": ""
+    },
+    {
+      "feature": "time_since_last_tx_sec",
+      "auc": 0.5476,
+      "flag": ""
+    },
+    {
+      "feature": "device_associated_accounts",
+      "auc": 0.539,
+      "flag": ""
+    },
+    {
+      "feature": "tx_frequency_24h",
+      "auc": 0.523,
+      "flag": ""
+    },
+    {
+      "feature": "day_of_month",
+      "auc": 0.5207,
+      "flag": ""
+    },
+    {
+      "feature": "sender_declared_annual_income_inr",
+      "auc": 0.5189,
+      "flag": ""
+    },
+    {
+      "feature": "sender_bene_min_prior_tx",
+      "auc": 0.5153,
+      "flag": ""
+    },
+    {
+      "feature": "device_age_days",
+      "auc": 0.5133,
+      "flag": ""
+    },
+    {
+      "feature": "sender_historical_30d_avg_balance_inr",
+      "auc": 0.5119,
+      "flag": ""
+    },
+    {
+      "feature": "receiver_account_age_days",
+      "auc": 0.5116,
+      "flag": ""
+    },
+    {
+      "feature": "sender_current_balance_inr",
+      "auc": 0.5108,
+      "flag": ""
+    },
+    {
+      "feature": "sender_account_age_days",
+      "auc": 0.5099,
+      "flag": ""
+    },
+    {
+      "feature": "sender_historical_30d_avg_tx_amt_inr",
+      "auc": 0.507,
+      "flag": ""
+    },
+    {
+      "feature": "device_is_registered",
+      "auc": 0.504,
+      "flag": ""
+    },
+    {
+      "feature": "sender_historical_30d_tx_count",
+      "auc": 0.5035,
+      "flag": ""
+    },
+    {
+      "feature": "sender_bene_count",
+      "auc": 0.5033,
+      "flag": ""
+    },
+    {
+      "feature": "account_balance_after",
+      "auc": 0.5026,
+      "flag": ""
+    },
+    {
+      "feature": "sender_pep_flag",
+      "auc": 0.5022,
+      "flag": ""
+    },
+    {
+      "feature": "hour_of_day",
+      "auc": 0.5018,
+      "flag": ""
+    },
+    {
+      "feature": "sender_bene_added_7d",
+      "auc": 0.5017,
+      "flag": ""
+    },
+    {
+      "feature": "day_of_week",
+      "auc": 0.5004,
+      "flag": ""
+    }
+  ],
+  "cleaning_log": [
+    {
+      "step": "dedupe_transaction_id",
+      "rows_removed": 0
+    },
+    {
+      "step": "drop_unparseable_timestamp",
+      "rows_removed": 0
+    },
+    {
+      "step": "drop_transaction_type",
+      "reason": "redundant_with_channel"
+    },
+    {
+      "step": "drop_status",
+      "reason": "constant"
+    },
+    {
+      "step": "derive_calendar_and_log_amount"
+    },
+    {
+      "step": "merge_7_sources",
+      "rows": 10000,
+      "columns": 57
+    }
+  ]
+}
