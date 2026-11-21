@@ -1,0 +1,23 @@
+item,rule,count,support,fraud_rate
+HIGH_AMOUNT_SPIKE,amount_ratio_vs_30d_avg > 5,2683,0.2683,0.3321
+MODERATE_AMOUNT_SPIKE,2 < amount_ratio_vs_30d_avg <= 5,1012,0.1012,0.2223
+HIGH_VALUE,amount_inr >= 50000,1923,0.1923,0.35
+NEAR_THRESHOLD,45000 <= amount_inr < 50000,317,0.0317,0.7287
+NEW_DEVICE,is_new_device == 1,2218,0.2218,0.3206
+NEW_BENEFICIARY,is_new_beneficiary == 1,2444,0.2444,0.2676
+RECENT_BENEFICIARY,time_since_beneficiary_added_min < 1440,906,0.0906,0.7616
+FAR_FROM_HOME,distance_from_home_km > 100,575,0.0575,0.6574
+EXTREME_LOCATION,distance_from_home_km > 500,250,0.025,0.404
+ODD_HOUR,hour_of_day < 6 or hour_of_day > 22,1101,0.1101,0.1953
+CH_UPI,channel == 'UPI',7051,0.7051,0.1329
+CH_NEFT,channel == 'NEFT',2237,0.2237,0.1372
+CH_RTGS,channel == 'RTGS',712,0.0712,0.1461
+PEP_CUSTOMER,sender_pep_flag == 1,98,0.0098,0.0816
+KYC_NOT_VERIFIED,sender_kyc_status != 'VERIFIED',774,0.0774,0.1421
+PASS_THROUGH,is_pass_through == 1,163,0.0163,0.9939
+QUICK_INFLOW,sec_since_sender_last_inflow < 3600,392,0.0392,0.676
+HUB_RECEIVER,receiver_distinct_senders_24h >= 4,254,0.0254,0.6496
+BURST_SENDER,sender_tx_24h >= 2,397,0.0397,0.4408
+SHARED_DEVICE,device_distinct_accounts >= 3,858,0.0858,0.1981
+FRAUDULENT,risk_label == FRAUDULENT,1348,0.1348,1.0
+BORDERLINE,risk_label == BORDERLINE,452,0.0452,0.0

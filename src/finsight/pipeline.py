@@ -97,11 +97,54 @@ def stage_sanctions():
     log.info("sanctions: %d entities / %d name variants", ents.entity_uid.nunique(), len(ents))
 
 
+def stage_eda():
+    """Phase 2 figures (reports/figures/eda_*.png) + reports/eda_summary.json."""
+    import warnings
+
+    from finsight.eda import run_all
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        s = run_all()
+    log.info("eda: %d figures; RQ1 top-3 = %s", len(s["figures"]), s["rq1_top10"][:3])
+
+
+def stage_mining():
+    """Phase 4: Apriori vs FP-Growth benchmark, rules (v1.0/v1.1/PaySim), emerging patterns, figures."""
+    import warnings
+
+    from finsight.mining.report import run_all
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        s = run_all()
+    log.info("mining: v1.1 productive rules=%d (network=%d); PaySim rules=%d; %.0fs",
+             s["v1_1"]["productive"], s["v1_1"]["productive_fraud_with_network_item"], s["paysim"]["rules"],
+             s["runtime_seconds"])
+
+
+def stage_train_supervised():
+    """Phase 5: 6 models × Exp A/B/C × v1.0/v1.1 (5×2 CV + hold-out), imbalance, temporal, rule baseline."""
+    import warnings
+
+    from finsight.ml.supervised import run_all
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        s = run_all()
+    b = s["best_v1_1"]
+    log.info("supervised: best v1.1 = %s/Exp %s test PR-AUC %.3f F1 %.3f; %.0fs", b["model"], b["exp"],
+             b["test_pr_auc"], b["test_f1"], s["runtime_seconds"])
+
+
 STAGES = {
     "inject": stage_inject,
     "wrangle": stage_wrangle,
     "graph": stage_graph,
     "sanctions": stage_sanctions,
+    "eda": stage_eda,
+    "mining": stage_mining,
+    "train_supervised": stage_train_supervised,
 }
 
 

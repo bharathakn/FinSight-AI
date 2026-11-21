@@ -1,0 +1,456 @@
+{
+  "split_sizes": {
+    "train": 6000,
+    "val": 2000,
+    "test": 2000
+  },
+  "temporal_split_sizes": {
+    "train": 6400,
+    "val": 1323,
+    "test": 2277
+  },
+  "cv": "RepeatedStratifiedKFold(5\u00d72) on dev (80%), stratified on risk_label; SMOTE inside pipeline",
+  "n_features": {
+    "A": 12,
+    "B": 30,
+    "C": 49
+  },
+  "best_v1_1": {
+    "model": "xgboost",
+    "exp": "C",
+    "cv_pr_auc_mean": 0.8938,
+    "test_pr_auc": 0.8753,
+    "test_roc_auc": 0.9801,
+    "test_f1": 0.8013,
+    "test_precision": 0.6978,
+    "test_recall": 0.9407,
+    "test_borderline_flag_rate": 0.7889
+  },
+  "acceptance_C_gt_B_v1_1": {
+    "random_forest": true,
+    "xgboost": true
+  },
+  "paired_tests": [
+    {
+      "version": "v1_0",
+      "model": "decision_tree",
+      "comparison": "B vs A",
+      "mean_diff": 0.13755,
+      "std_diff": 0.03922,
+      "wins": 10,
+      "n": 10,
+      "t_pvalue": 0.0,
+      "wilcoxon_pvalue": 0.00195
+    },
+    {
+      "version": "v1_0",
+      "model": "decision_tree",
+      "comparison": "C vs B",
+      "mean_diff": 0.00631,
+      "std_diff": 0.02519,
+      "wins": 7,
+      "n": 10,
+      "t_pvalue": 0.44861,
+      "wilcoxon_pvalue": 0.32227
+    },
+    {
+      "version": "v1_0",
+      "model": "knn",
+      "comparison": "B vs A",
+      "mean_diff": 0.28914,
+      "std_diff": 0.02636,
+      "wins": 10,
+      "n": 10,
+      "t_pvalue": 0.0,
+      "wilcoxon_pvalue": 0.00195
+    },
+    {
+      "version": "v1_0",
+      "model": "knn",
+      "comparison": "C vs B",
+      "mean_diff": -0.01086,
+      "std_diff": 0.0262,
+      "wins": 3,
+      "n": 10,
+      "t_pvalue": 0.22229,
+      "wilcoxon_pvalue": 0.19336
+    },
+    {
+      "version": "v1_0",
+      "model": "mlp",
+      "comparison": "B vs A",
+      "mean_diff": 0.22448,
+      "std_diff": 0.04498,
+      "wins": 10,
+      "n": 10,
+      "t_pvalue": 0.0,
+      "wilcoxon_pvalue": 0.00195
+    },
+    {
+      "version": "v1_0",
+      "model": "mlp",
+      "comparison": "C vs B",
+      "mean_diff": -0.0089,
+      "std_diff": 0.03469,
+      "wins": 2,
+      "n": 10,
+      "t_pvalue": 0.43807,
+      "wilcoxon_pvalue": 0.23242
+    },
+    {
+      "version": "v1_0",
+      "model": "naive_bayes",
+      "comparison": "B vs A",
+      "mean_diff": 0.3797,
+      "std_diff": 0.05248,
+      "wins": 10,
+      "n": 10,
+      "t_pvalue": 0.0,
+      "wilcoxon_pvalue": 0.00195
+    },
+    {
+      "version": "v1_0",
+      "model": "naive_bayes",
+      "comparison": "C vs B",
+      "mean_diff": -0.0106,
+      "std_diff": 0.01813,
+      "wins": 2,
+      "n": 10,
+      "t_pvalue": 0.09761,
+      "wilcoxon_pvalue": 0.04883
+    },
+    {
+      "version": "v1_0",
+      "model": "random_forest",
+      "comparison": "B vs A",
+      "mean_diff": 0.19513,
+      "std_diff": 0.01578,
+      "wins": 10,
+      "n": 10,
+      "t_pvalue": 0.0,
+      "wilcoxon_pvalue": 0.00195
+    },
+    {
+      "version": "v1_0",
+      "model": "random_forest",
+      "comparison": "C vs B",
+      "mean_diff": -0.00183,
+      "std_diff": 0.00509,
+      "wins": 4,
+      "n": 10,
+      "t_pvalue": 0.28412,
+      "wilcoxon_pvalue": 0.375
+    },
+    {
+      "version": "v1_0",
+      "model": "xgboost",
+      "comparison": "B vs A",
+      "mean_diff": 0.19705,
+      "std_diff": 0.01899,
+      "wins": 10,
+      "n": 10,
+      "t_pvalue": 0.0,
+      "wilcoxon_pvalue": 0.00195
+    },
+    {
+      "version": "v1_0",
+      "model": "xgboost",
+      "comparison": "C vs B",
+      "mean_diff": -0.00479,
+      "std_diff": 0.00683,
+      "wins": 3,
+      "n": 10,
+      "t_pvalue": 0.05385,
+      "wilcoxon_pvalue": 0.06445
+    },
+    {
+      "version": "v1_1",
+      "model": "decision_tree",
+      "comparison": "B vs A",
+      "mean_diff": 0.06862,
+      "std_diff": 0.02671,
+      "wins": 10,
+      "n": 10,
+      "t_pvalue": 2e-05,
+      "wilcoxon_pvalue": 0.00195
+    },
+    {
+      "version": "v1_1",
+      "model": "decision_tree",
+      "comparison": "C vs B",
+      "mean_diff": 0.01437,
+      "std_diff": 0.03238,
+      "wins": 7,
+      "n": 10,
+      "t_pvalue": 0.19409,
+      "wilcoxon_pvalue": 0.16016
+    },
+    {
+      "version": "v1_1",
+      "model": "knn",
+      "comparison": "B vs A",
+      "mean_diff": 0.10158,
+      "std_diff": 0.03028,
+      "wins": 10,
+      "n": 10,
+      "t_pvalue": 0.0,
+      "wilcoxon_pvalue": 0.00195
+    },
+    {
+      "version": "v1_1",
+      "model": "knn",
+      "comparison": "C vs B",
+      "mean_diff": 0.08387,
+      "std_diff": 0.02682,
+      "wins": 10,
+      "n": 10,
+      "t_pvalue": 0.0,
+      "wilcoxon_pvalue": 0.00195
+    },
+    {
+      "version": "v1_1",
+      "model": "mlp",
+      "comparison": "B vs A",
+      "mean_diff": 0.10629,
+      "std_diff": 0.0385,
+      "wins": 10,
+      "n": 10,
+      "t_pvalue": 1e-05,
+      "wilcoxon_pvalue": 0.00195
+    },
+    {
+      "version": "v1_1",
+      "model": "mlp",
+      "comparison": "C vs B",
+      "mean_diff": 0.07195,
+      "std_diff": 0.03035,
+      "wins": 10,
+      "n": 10,
+      "t_pvalue": 4e-05,
+      "wilcoxon_pvalue": 0.00195
+    },
+    {
+      "version": "v1_1",
+      "model": "naive_bayes",
+      "comparison": "B vs A",
+      "mean_diff": 0.08739,
+      "std_diff": 0.05746,
+      "wins": 10,
+      "n": 10,
+      "t_pvalue": 0.00096,
+      "wilcoxon_pvalue": 0.00195
+    },
+    {
+      "version": "v1_1",
+      "model": "naive_bayes",
+      "comparison": "C vs B",
+      "mean_diff": 0.08814,
+      "std_diff": 0.01952,
+      "wins": 10,
+      "n": 10,
+      "t_pvalue": 0.0,
+      "wilcoxon_pvalue": 0.00195
+    },
+    {
+      "version": "v1_1",
+      "model": "random_forest",
+      "comparison": "B vs A",
+      "mean_diff": 0.08985,
+      "std_diff": 0.01774,
+      "wins": 10,
+      "n": 10,
+      "t_pvalue": 0.0,
+      "wilcoxon_pvalue": 0.00195
+    },
+    {
+      "version": "v1_1",
+      "model": "random_forest",
+      "comparison": "C vs B",
+      "mean_diff": 0.05423,
+      "std_diff": 0.01113,
+      "wins": 10,
+      "n": 10,
+      "t_pvalue": 0.0,
+      "wilcoxon_pvalue": 0.00195
+    },
+    {
+      "version": "v1_1",
+      "model": "xgboost",
+      "comparison": "B vs A",
+      "mean_diff": 0.10553,
+      "std_diff": 0.02679,
+      "wins": 10,
+      "n": 10,
+      "t_pvalue": 0.0,
+      "wilcoxon_pvalue": 0.00195
+    },
+    {
+      "version": "v1_1",
+      "model": "xgboost",
+      "comparison": "C vs B",
+      "mean_diff": 0.04658,
+      "std_diff": 0.01297,
+      "wins": 10,
+      "n": 10,
+      "t_pvalue": 0.0,
+      "wilcoxon_pvalue": 0.00195
+    }
+  ],
+  "rule_baseline_v1_1": {
+    "n_rules_train": 50,
+    "k_selected_on_val": 36,
+    "val_f1": 0.759,
+    "test": {
+      "pr_auc": 0.7787,
+      "roc_auc": 0.9312,
+      "f1": 0.7483,
+      "precision": 0.6918,
+      "recall": 0.8148,
+      "threshold": 5.6227,
+      "tp": 220,
+      "fp": 98,
+      "fn": 50,
+      "tn": 1632
+    }
+  },
+  "three_class_xgb_expC": {
+    "labels": [
+      "LEGITIMATE",
+      "FRAUDULENT",
+      "BORDERLINE"
+    ],
+    "macro_f1": 0.7896,
+    "per_class_f1": {
+      "LEGITIMATE": 0.9903,
+      "FRAUDULENT": 0.8231,
+      "BORDERLINE": 0.5556
+    },
+    "confusion": [
+      [
+        1626,
+        14,
+        0
+      ],
+      [
+        15,
+        228,
+        27
+      ],
+      [
+        3,
+        42,
+        45
+      ]
+    ]
+  },
+  "temporal": [
+    {
+      "model": "random_forest",
+      "exp": "A",
+      "split": "temporal",
+      "pr_auc": 0.675,
+      "roc_auc": 0.9549,
+      "f1": 0.6925
+    },
+    {
+      "model": "random_forest",
+      "exp": "A",
+      "split": "stratified",
+      "pr_auc": 0.6503,
+      "roc_auc": 0.9438,
+      "f1": 0.6871
+    },
+    {
+      "model": "random_forest",
+      "exp": "B",
+      "split": "temporal",
+      "pr_auc": 0.7986,
+      "roc_auc": 0.972,
+      "f1": 0.7798
+    },
+    {
+      "model": "random_forest",
+      "exp": "B",
+      "split": "stratified",
+      "pr_auc": 0.7664,
+      "roc_auc": 0.9694,
+      "f1": 0.7803
+    },
+    {
+      "model": "random_forest",
+      "exp": "C",
+      "split": "temporal",
+      "pr_auc": 0.8554,
+      "roc_auc": 0.9778,
+      "f1": 0.8188
+    },
+    {
+      "model": "random_forest",
+      "exp": "C",
+      "split": "stratified",
+      "pr_auc": 0.8385,
+      "roc_auc": 0.9759,
+      "f1": 0.7993
+    },
+    {
+      "model": "xgboost",
+      "exp": "A",
+      "split": "temporal",
+      "pr_auc": 0.6635,
+      "roc_auc": 0.9566,
+      "f1": 0.6927
+    },
+    {
+      "model": "xgboost",
+      "exp": "A",
+      "split": "stratified",
+      "pr_auc": 0.6902,
+      "roc_auc": 0.9494,
+      "f1": 0.6771
+    },
+    {
+      "model": "xgboost",
+      "exp": "B",
+      "split": "temporal",
+      "pr_auc": 0.8287,
+      "roc_auc": 0.976,
+      "f1": 0.7766
+    },
+    {
+      "model": "xgboost",
+      "exp": "B",
+      "split": "stratified",
+      "pr_auc": 0.8291,
+      "roc_auc": 0.9737,
+      "f1": 0.7829
+    },
+    {
+      "model": "xgboost",
+      "exp": "C",
+      "split": "temporal",
+      "pr_auc": 0.8763,
+      "roc_auc": 0.9808,
+      "f1": 0.7988
+    },
+    {
+      "model": "xgboost",
+      "exp": "C",
+      "split": "stratified",
+      "pr_auc": 0.8753,
+      "roc_auc": 0.9801,
+      "f1": 0.8013
+    }
+  ],
+  "runtime_seconds": 357.8,
+  "figures": {
+    "ml_01_abc_cv_pr_auc": "/mnt/data/bharatha_kn/On_Going_Projects/cct/FinSight_ai/reports/figures/ml_01_abc_cv_pr_auc.png",
+    "ml_02_test_pr_auc_heatmap": "/mnt/data/bharatha_kn/On_Going_Projects/cct/FinSight_ai/reports/figures/ml_02_test_pr_auc_heatmap.png",
+    "ml_03_pr_roc_expC": "/mnt/data/bharatha_kn/On_Going_Projects/cct/FinSight_ai/reports/figures/ml_03_pr_roc_expC.png",
+    "ml_04_per_scenario_xgb": "/mnt/data/bharatha_kn/On_Going_Projects/cct/FinSight_ai/reports/figures/ml_04_per_scenario_xgb.png",
+    "ml_05_imbalance": "/mnt/data/bharatha_kn/On_Going_Projects/cct/FinSight_ai/reports/figures/ml_05_imbalance.png",
+    "ml_06_confusion_by_label": "/mnt/data/bharatha_kn/On_Going_Projects/cct/FinSight_ai/reports/figures/ml_06_confusion_by_label.png",
+    "ml_07_temporal": "/mnt/data/bharatha_kn/On_Going_Projects/cct/FinSight_ai/reports/figures/ml_07_temporal.png",
+    "ml_08_borderline": "/mnt/data/bharatha_kn/On_Going_Projects/cct/FinSight_ai/reports/figures/ml_08_borderline.png",
+    "ml_09_decision_tree": "/mnt/data/bharatha_kn/On_Going_Projects/cct/FinSight_ai/reports/figures/ml_09_decision_tree.png"
+  }
+}

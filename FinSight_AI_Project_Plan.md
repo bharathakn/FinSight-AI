@@ -41,6 +41,7 @@
 | 12 | **9 containers**: ETL as a long-running server and a separate scoring hop add latency and cost without adding concepts. | Heavy on Cloud Run; harder to demo. | **5 services + dashboard + batch job + object storage** (Section 8.1). |
 | 13 | **Keras/TensorFlow** adds ~2 GB to images. | Slow builds and cold starts. | Autoencoder trained in **PyTorch**, exported to **ONNX**, served with `onnxruntime` (~50 MB). Framework-agnostic serving is itself a good CCT talking point. |
 | 14 | **SMOTE before CV** would leak synthetic neighbours across folds. | Optimistic CV scores. | SMOTE lives **inside an imblearn `Pipeline`**, so it's re-fit per fold. SMOTE is also compared against `class_weight` as an experiment. |
+| 16 | **Deployment target changed** by the team: must run on **Vercel + Render** (2026-11-21). | GCP Cloud Run plan obsolete; Streamlit can't run on Vercel; Render free has no private networking. | React SPA on Vercel + FastAPI on Render; inprocess/remote service modes; artifacts via GitHub Releases (§8.0, D-022–D-024). |
 | 15 | **Docker is not installed** on the dev machine. | Blocks Phase 8. | Install Docker Engine + Compose plugin before Phase 8 (the user needs sudo). |
 
 ---
@@ -82,14 +83,14 @@ flowchart TD
 
     subgraph CCT["☁️ CLOUD COMPUTING & TECHNOLOGY"]
         direction TB
-        CC1["Object Storage\nGCS (cloud) · MinIO (local)"]
+        CC1["Artifact Registry & Storage\nGitHub Releases · fsspec (S3-compatible)"]
         CC2["Containerisation\n5 services + dashboard + batch job"]
         CC3["Microservices + API Gateway\nFastAPI"]
-        CC5["GCP Cloud Run\nservices + Cloud Run Job"]
+        CC5["Render (FastAPI containers)\n+ Vercel (React SPA on CDN)"]
         CC6["Scaling · Health · Metrics · IaC"]
     end
 
-    DMW & ML & CCT --> Platform["FinSight AI Platform\n🖥️ Streamlit Dashboard\n🌐 Cloud REST API"]
+    DMW & ML & CCT --> Platform["FinSight AI Platform\n🖥️ React Dashboard (Vercel)\n🌐 REST API (Render)"]
 ```
 
 ---
@@ -103,7 +104,7 @@ flowchart TD
 | **Dataset Role** | Raw research corpus for KDD | Feature matrix for supervised + unsupervised learning | Cloud-stored data and artifacts loaded at startup |
 | **Core Output** | Association rules, data quality report, v1.1 dataset | Trained models, comparison table, learning curves | Deployed API returning JSON risk reports |
 | **Dashboard Role** | Pattern Mining Lab, Data Quality page | ML Lab, Clustering, Risk Scorer | Cloud-served frontend, API consumer, metrics |
-| **Unique Deliverable** | Apriori vs FP-Growth experiment; leakage audit | Exp A/B/C ablation + Anomaly + SHAP | GCP Cloud Run deployment + docker-compose |
+| **Unique Deliverable** | Apriori vs FP-Growth experiment; leakage audit | Exp A/B/C ablation + Anomaly + SHAP | Vercel + Render deployment, docker-compose microservices |
 
 ---
 
@@ -128,13 +129,13 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    subgraph Storage["☁️ Object Storage — GCS bucket (cloud) / MinIO (local)"]
+    subgraph Storage["☁️ Artifacts — GitHub Release (model registry) · local dataset"]
         R["raw/ — CSVs, XML"]
         C["curated/ — master_transactions.parquet\nitems.parquet · entities.parquet"]
         A["artifacts/ — models (.joblib, .onnx)\nrules.parquet · metrics.json · graph_state"]
     end
 
-    Job["🔧 Pipeline Job — DMW + ML\n(Cloud Run Job / compose one-shot)\nETL → inject v1.1 → graph features →\nmining → train → evaluate → publish"]
+    Job["🔧 Pipeline (batch) — DMW + ML\n(local / compose one-shot)\nETL → inject v1.1 → graph features →\nmining → train → evaluate → publish"]
     R --> Job --> C & A
 
     A --> MLS & MIN & GR & SAN
@@ -161,7 +162,7 @@ flowchart TD
 
     GW["🌐 api-gateway :8000 — CCT\nrouting · scoring orchestration (0–100)\nrule overrides · /health · /metrics"]
     MLS & MIN & GR & SAN --> GW
-    GW --> UI["📊 dashboard :8501 — Streamlit (all three)"]
+    GW --> UI["📊 React dashboard on Vercel (all three)"]
 ```
 
 **Scoring (inside the gateway):**
@@ -268,6 +269,9 @@ Dropped: `NEW_ACCOUNT` (0 rows), `IMMEDIATE_REPEAT` (2 rows), `RAPID_BURST` from
 
 ### 6.5 Association Rule Mining Experiment
 
+> **Results (Phase 4, 2026-11-21):** see `notebooks/03_association_mining.ipynb` and `reports/mining_summary.json`. v1.1: 49 productive rules (16 with network items) vs v1.0: 34 (0 network). Apriori = FP-Growth itemsets; peak memory 1,317 MB vs 78.5 MB at 49 items / s = 0.002. Top rule {PASS_THROUGH} → FRAUDULENT (conf 99%, lift 7.4).
+
+
 - **Full dataset:** min_support = 0.01, min_confidence = 0.5 → filter Lift > 1.5, Confidence > 0.6, consequent ∈ {FRAUDULENT, BORDERLINE}
 - **Fraud-only subset:** min_support = 0.05 → which behaviours co-occur *within* fraud?
 - **Apriori vs FP-Growth benchmark:** runtime and peak memory (`tracemalloc`) across min_support ∈ {0.005, 0.01, 0.02, 0.05}; itemset counts must match exactly (a correctness check)
@@ -318,7 +322,19 @@ Run on **v1.1** (primary). Exp C is also run on **v1.0** as a control: network f
 | XGBoost | Boosting | RandomizedSearch (n_iter=20): learning_rate, n_estimators, max_depth, subsample, scale_pos_weight |
 | MLP (sklearn) | Backprop | hidden_layer_sizes, activation, alpha, learning_rate_init |
 
-**Result matrix** (auto-generated to `reports/ml_experiment_results.csv`): Model × {A, B, C} × {F1, PR-AUC, ROC-AUC}, plus tuned F1 and per-scenario recall.
+**Result matrix** (Phase 5, v1.1, held-out test; CV means and v1.0 in `reports/ml_experiment_results.csv`):
+
+| Model | Exp A PR-AUC | Exp B PR-AUC | Exp C PR-AUC | Exp C ROC-AUC | Exp C F1 |
+|-------|----------|----------|----------|----------|---------|
+| Decision Tree | 0.606 | 0.671 | 0.690 | 0.946 | 0.787 |
+| Naive Bayes | 0.421 | 0.550 | 0.642 | 0.904 | 0.663 |
+| KNN | 0.507 | 0.655 | 0.709 | 0.935 | 0.707 |
+| Random Forest | 0.650 | 0.766 | 0.838 | 0.976 | 0.799 |
+| XGBoost | 0.690 | 0.829 | 0.875 | 0.980 | 0.801 |
+| MLP Neural Net | 0.551 | 0.681 | 0.798 | 0.962 | 0.734 |
+| **Stacking Ensemble** | — | — | Phase 7 | Phase 7 | Phase 7 |
+
+Paired 5×2 CV: C > B significant for 5/6 models on v1.1 (p < 0.001), 0/6 on v1.0. See `notebooks/04_supervised_ml.ipynb`.
 
 ### 7.4 Module 2 — Clustering
 - K-Means on Exp B (scaled), K = 2..8 → Elbow + Silhouette + Davies–Bouldin
@@ -354,44 +370,68 @@ Global SHAP bar + beeswarm (XGB), local waterfall per transaction (served via `/
 
 ## 8. Subject 3 — Cloud Computing & Technology (CCT)
 
+### 8.0 Deployment target (revised 2026-11-21, D-022/D-023)
+**Frontend on Vercel, backend on Render.** GCP Cloud Run (plan v2) has been replaced.
+
+| Layer | Platform | Why |
+|---|---|---|
+| Dashboard (React + Vite, static SPA) | **Vercel** (Hobby, free) | Global CDN for static assets, Git-push deploys, preview deployments per pull request. Streamlit can't run on Vercel (it needs a long-lived WebSocket server), so the dashboard is a static React app that calls the API. |
+| FastAPI services (Docker) | **Render** web services (free) | Native Docker deploys from GitHub, HTTPS by default, IaC via `render.yaml` Blueprint. |
+| Model artifacts (~26 MB) | **GitHub Releases** ("model registry") → baked into the image at build | Render's free filesystem is ephemeral, so artifacts are versioned release assets downloaded during `docker build`. The same `fsspec` storage layer can point to any S3-compatible bucket (optional Supabase Storage / Cloudflare R2). |
+| Training pipeline (batch) | Local machine (`make pipeline`) → `make publish-artifacts` | Needs the 1.8 GB dataset, which isn't in Git; Render cron jobs aren't free. |
+| CI | GitHub Actions | Lint + tests on every push; Render and Vercel auto-deploy from `main`. |
+
+**Render free-tier constraints and how the design handles them**
+| Constraint | Design response |
+|---|---|
+| Free web services **cannot receive private-network traffic** | Services that call each other use public HTTPS URLs plus a shared-secret header (`X-Internal-Key`) checked by middleware. |
+| Free services **spin down after 15 min idle**; waking takes up to ~1 min | The dashboard shows a "waking the backend" state and polls `/health`. Cold start and warm latency are measured and reported as a CCT finding (scale-to-zero trade-off). |
+| 750 free instance-hours per workspace per month | Sleeping services use no hours, so 2–6 services fit a demo month. |
+| ~512 MB RAM per free instance | Serving models chosen with memory in mind; SHAP via XGBoost's native `pred_contribs` (no heavy `shap` import at serve time). |
+| Vercel rewrite/proxy timeout 30 s | The SPA calls the Render gateway **directly** (CORS allow-list), not through a Vercel rewrite, so a cold start can't hit the 30 s limit. |
+
+**Two deployment modes from the same code (`FINSIGHT_SERVICE_MODE`)**
+- `remote` (microservices): gateway → ml / mining / graph / sanctions over HTTP. Used in **Docker Compose locally** and in the **Render "full" Blueprint** (5 web services). This is the CCT microservices demonstration.
+- `inprocess` (modular monolith): the gateway imports the four service modules directly, so **one Render web service** has one cold start. This is the default free-tier deployment.
+
 ### 8.1 Services (authoritative table)
 
-| Container | Port | Kind | Owns | Responsibility |
+| Service | Local port | Render (full Blueprint) | Owns | Responsibility |
 |---|---|---|---|---|
-| `api-gateway` | 8000 | Service | CCT | Public REST API, routing, risk scoring orchestration, `/health`, `/metrics` |
-| `ml-service` | 8001 | Service | ML | Classifier, anomaly (IF/OCSVM/ONNX AE), cluster, SHAP |
-| `mining-service` | 8002 | Service | DMW | Rule store and queries, rule matching, Apriori-vs-FP-Growth benchmark |
-| `graph-service` | 8003 | Service | ML+DMW | Graph state, point-in-time features, ego networks |
-| `sanctions-service` | 8004 | Service | DMW | RapidFuzz screening over OFAC+UN |
-| `dashboard` | 8501 | Service | All | Streamlit UI (calls only the gateway) |
-| `pipeline` | — | **Batch job** | DMW+ML | ETL → v1.1 → features → mining → training → publish artifacts |
-| `minio` | 9000 | Local infra | CCT | S3-compatible stand-in for GCS in local compose |
+| `api-gateway` | 8000 | web service (public) | CCT | Public REST API, routing, risk-scoring orchestration, `/health`, `/metrics`, CORS |
+| `ml-service` | 8001 | web service (key-protected) | ML | Classifier, anomaly (IF / OC-SVM / ONNX AE), cluster, explanations |
+| `mining-service` | 8002 | web service (key-protected) | DMW | Rule store, rule matching, benchmark results |
+| `graph-service` | 8003 | web service (key-protected) | ML+DMW | Graph state, point-in-time features, ego networks |
+| `sanctions-service` | 8004 | web service (key-protected) | DMW | RapidFuzz screening over OFAC+UN |
+| `frontend` | 5173 (Vite dev) | — (Vercel) | All | React dashboard, 9 pages, calls the gateway only |
+| `pipeline` | — | — (local / CI) | DMW+ML | ETL → v1.1 → features → mining → training → publish artifacts |
 
-All services are stateless: they load artifacts from `FINSIGHT_STORAGE_URI` at startup (`gs://…` in cloud, `s3://…` MinIO locally, or a local path in dev) using one `fsspec` code path.
+All services are stateless and load artifacts at startup from `FINSIGHT_ARTIFACTS_DIR` (baked into the image) or `FINSIGHT_STORAGE_URI` (any fsspec URI: local path, `s3://…`).
 
 ### 8.2 Cloud Concepts → Implementation
 
 | Concept | Implementation |
 |---|---|
-| IaaS / PaaS / SaaS / FaaS | Cloud Run = serverless PaaS for containers; FinSight exposes SaaS-style API |
-| Object storage | GCS bucket with `raw/`, `curated/`, `artifacts/` zones; MinIO locally |
-| Virtualisation → containers | Dockerfiles per service; VM vs container comparison in report (image sizes, start times measured) |
-| Microservices | 5 independently deployable services + gateway pattern |
-| Orchestration | Docker Compose (local), Cloud Run (cloud), conceptual Kubernetes manifests |
-| Batch vs serving | Pipeline as **Cloud Run Job**, APIs as Cloud Run Services |
-| REST + OpenAPI | FastAPI + Pydantic schemas, auto Swagger at `/docs` |
-| 12-factor / stateless | Config via env vars; no local state; logs to stdout (structured JSON) |
-| Elasticity | `docker compose up --scale ml-service=3` + Cloud Run min/max instances, concurrency; load test with `locust` |
-| IaC | `docker-compose.yml`, Cloud Run service YAMLs, `deploy.sh` (gcloud) |
-| Container registry | Google Artifact Registry |
-| Observability | Request ID propagation, latency histograms at `/metrics`, Cloud Logging; dashboard "Platform" page |
-| Security basics | Service-to-service via private URLs/IAM invoker; secrets via env/Secret Manager; non-root containers |
+| IaaS / PaaS / SaaS / FaaS | Render = PaaS for containers; Vercel = frontend PaaS + CDN (and FaaS if functions are used); FinSight exposes a SaaS-style API. A comparison table goes in the report. |
+| Virtualisation → containers | One Dockerfile per service (multi-stage, slim, non-root); VM vs container comparison (image size, start time measured) |
+| Microservices | 5 independently deployable FastAPI services + API-gateway pattern; Compose and the Render full Blueprint |
+| Monolith vs microservices trade-off | `FINSIGHT_SERVICE_MODE=inprocess` vs `remote`: same code, measured latency and cold-start difference |
+| Orchestration | Docker Compose (local, incl. `--scale ml-service=3` behind the gateway); conceptual Kubernetes manifests |
+| CDN / edge | Vercel serves the static SPA from its edge network |
+| CI/CD & GitOps | GitHub Actions (tests) → auto-deploy on push to `main` (Render + Vercel); Vercel preview URLs per PR |
+| Infrastructure as Code | `render.yaml` Blueprint, `vercel.json`, `docker-compose.yml` |
+| Artifact / model registry | GitHub Releases (versioned model bundles) downloaded at image build |
+| Object storage | fsspec abstraction; optional S3-compatible bucket (Supabase Storage / R2) |
+| Elasticity & scale-to-zero | Render free spin-down (cost 0 when idle) vs cold-start latency, measured; Compose horizontal scaling demo; locust load test |
+| Configuration & secrets | 12-factor env vars; Render/Vercel environment secrets; `X-Internal-Key` shared secret |
+| Observability | Structured JSON logs (Render log stream), request-ID propagation, `/metrics` latency histograms, dashboard "Platform" page |
+| Security | HTTPS everywhere (managed TLS), CORS allow-list, internal key on service-to-service calls, non-root containers, no secrets in Git |
 
 ### 8.3 REST Endpoints (gateway)
 
 | Endpoint | Method | Output | Owns |
 |---|---|---|---|
-| `/score-transaction` | POST | risk 0–100, tier, component scores, SHAP top-k, cluster, fired rules, sanctions | ML + CCT |
+| `/score-transaction` | POST | risk 0–100, tier, component scores, top feature contributions, cluster, fired rules, sanctions | ML + CCT |
 | `/anomaly-score` | POST | IF / OCSVM / AE scores | ML |
 | `/patterns` | GET `?min_lift&min_conf&consequent` | association rules | DMW |
 | `/patterns/benchmark` | GET | Apriori vs FP-Growth results | DMW |
@@ -402,22 +442,20 @@ All services are stateless: they load artifacts from `FINSIGHT_STORAGE_URI` at s
 | `/transactions/{tx_id}` | GET | full merged profile | DMW |
 | `/health`, `/metrics` | GET | service status, latency/request stats | CCT |
 
-Target: p95 latency < 200 ms for `/score-transaction` locally (warm).
+Targets: p95 < 200 ms for `/score-transaction` when warm; cold start measured and reported separately.
 
 ### 8.4 Deployment Plan
 
 ```mermaid
 flowchart LR
-    Dev["Local: uv venv\npytest"] --> Compose["docker compose up\n(5 services + dashboard + MinIO + pipeline job)"]
-    Compose --> Build["Build & tag images"] --> AR["Push → Artifact Registry"]
-    AR --> Job["Cloud Run Job: pipeline\nwrites artifacts → GCS"]
-    AR --> Svc["Cloud Run Services\ngateway + 4 internal + dashboard"]
-    Job --> Svc --> Mon["Cloud Logging + /metrics\n+ locust load test"]
+    Dev["Local: uv venv · pytest\nmake pipeline (training)"] --> Pub["make publish-artifacts\n→ GitHub Release (model registry)"]
+    Dev --> Compose["docker compose up\n5 services + frontend (remote mode)"]
+    Push["git push main"] --> GHA["GitHub Actions\ntests"]
+    GHA --> Render["Render Blueprint (render.yaml)\ndocker build ← downloads release artifacts\ngateway (inprocess) or 5 services (remote)"]
+    GHA --> Vercel["Vercel\nReact SPA build → CDN"]
+    Vercel -- "HTTPS + CORS" --> Render
+    Render --> Mon["Render logs · /metrics\ncold-start vs warm latency · locust"]
 ```
-
-GCP specifics: project + billing (free tier), Artifact Registry repo, GCS bucket, one service account per service with `storage.objectViewer` (pipeline gets `objectAdmin`). Internal services use `--no-allow-unauthenticated` and the gateway authenticates with ID tokens. Dashboard and gateway are public. `min-instances=0` gives scale-to-zero (with cold-start latency measured and reported).
-
----
 
 ## 9. Research Questions
 
@@ -440,7 +478,7 @@ GCP specifics: project + billing (free tier), Artifact Registry repo, GCS bucket
 flowchart LR
     P0["P0 Audit ✅"] --> P1["P1 Wrangling\n+ Quality"] --> P1b["P1b Inject v1.1"] --> P2["P2 EDA"] --> P3["P3 Graph features"]
     P3 --> P4["P4 Assoc. mining"] --> P5["P5 Supervised"] --> P6["P6 Unsupervised\n+ Anomaly"] --> P7["P7 Tuning · Stack · SHAP"]
-    P7 --> P8["P8 Services + Docker"] --> P9["P9 Dashboard"] --> P10["P10 GCP deploy + report"]
+    P7 --> P8["P8 Services + Docker"] --> P9["P9 React dashboard"] --> P10["P10 Render + Vercel deploy + report"]
 ```
 
 ### Phase 0 — Dataset Audit ✅ (done 2026-11-21; findings in Section 0)
@@ -487,18 +525,18 @@ flowchart LR
 - [ ] `finsight/ml/explainer.py` — SHAP global/local; save all artifacts + `metrics.json`
 
 ### Phase 8 — Services + Docker *(CCT)*
-- [ ] `finsight/storage.py` (fsspec: local / MinIO / GCS)
+- [ ] `finsight/storage.py` (fsspec: local / S3-compatible) + `make publish-artifacts` (GitHub Release)
 - [ ] `services/{gateway,ml,mining,graph,sanctions}/app.py` — FastAPI + Pydantic
 - [ ] `finsight/scoring/risk_scorer.py` — weights, overrides, tiers
-- [ ] Dockerfiles (multi-stage, slim, non-root) + `docker-compose.yml` (with MinIO + pipeline job)
+- [ ] Dockerfiles (multi-stage, slim, non-root) + `docker-compose.yml`; `FINSIGHT_SERVICE_MODE` inprocess/remote; `X-Internal-Key` middleware; CORS
 - [ ] pytest API tests; locust load test; `--scale ml-service=3` demo; latency < 200 ms check
 
 ### Phase 9 — Dashboard *(All)*
 - [ ] Pages: Overview · Data Quality · Transaction Explorer · Pattern Mining Lab · ML Lab · Clustering & Anomaly · Network Explorer · Risk Scorer · Platform (CCT metrics)
 
-### Phase 10 — GCP Deployment + Report *(CCT)*
-- [ ] Artifact Registry, GCS bucket, service accounts (scripted in `deploy/gcp/deploy.sh`)
-- [ ] Cloud Run Job (pipeline) → Cloud Run Services; measure cold start, p95 latency, cost
+### Phase 10 — Render + Vercel Deployment + Report *(CCT)*
+- [ ] `render.yaml` Blueprint (inprocess single service + full 5-service variant); `vercel.json`; GitHub Actions CI
+- [ ] Deploy backend on Render, frontend on Vercel; measure cold start, warm p95 latency, image sizes
 - [ ] Final report covering all three syllabi; demo rehearsal
 
 ---
@@ -558,18 +596,18 @@ flowchart LR
 ### ☁️ Cloud Computing & Technology
 | Topic | Implementation |
 |---|---|
-| Service models | Cloud Run (PaaS/serverless); API as SaaS |
-| Cloud storage | GCS zones; MinIO locally; fsspec abstraction |
+| Service models | Render (container PaaS), Vercel (frontend PaaS + CDN); API as SaaS |
+| Cloud storage | GitHub Releases as model registry; fsspec abstraction (S3-compatible optional) |
 | Virtualisation & containers | Dockerfiles; VM vs container measurements |
 | Microservices | 5 services + gateway |
-| Orchestration | Compose; Cloud Run; conceptual k8s YAML |
-| Batch processing | Cloud Run Job pipeline |
+| Orchestration | Compose; Render Blueprint; conceptual k8s YAML |
+| Batch processing | Offline pipeline → versioned artifacts → immutable images |
 | REST API | FastAPI, OpenAPI docs, 11 endpoints |
 | Cloud-native | 12-factor, stateless, env config, JSON logs |
-| Elasticity | compose `--scale`, Cloud Run autoscale, locust |
-| IaC | compose + Cloud Run YAML + deploy script |
-| Monitoring | `/metrics`, Cloud Logging, Platform page |
-| Security | IAM invoker auth, least-privilege service accounts, non-root images |
+| Elasticity | compose `--scale`, Render scale-to-zero (cold start measured), locust |
+| IaC | compose + `render.yaml` + `vercel.json` |
+| Monitoring | `/metrics`, Render logs, Platform page |
+| Security | HTTPS, CORS allow-list, internal shared key, non-root images, env secrets |
 
 ---
 
@@ -586,11 +624,11 @@ flowchart LR
 | Explainability | SHAP | ML |
 | Sanctions | RapidFuzz, lxml | DMW |
 | Visualisation | Plotly, Matplotlib, Seaborn | All |
-| Dashboard | Streamlit | All |
+| Dashboard | React + Vite + TypeScript, Plotly.js (static SPA) | All |
 | API | FastAPI, Uvicorn, Pydantic, httpx | CCT |
-| Storage | fsspec + gcsfs / s3fs; MinIO; GCS | CCT |
+| Storage | fsspec (+ s3fs optional); GitHub Releases | CCT |
 | Containers | Docker, Docker Compose | CCT |
-| Cloud | GCP Cloud Run (Services + Jobs), Artifact Registry, GCS, Cloud Logging | CCT |
+| Cloud | Render (Docker web services, Blueprint), Vercel (SPA + CDN), GitHub Actions | CCT |
 | Testing | pytest, locust | All |
 
 ---
@@ -616,7 +654,9 @@ FinSight_ai/
 ├── dashboard/     app.py + pages/
 ├── notebooks/     00_audit … 07_tuning_ensemble (thin: import finsight, show results)
 ├── docker/        Dockerfile.{service,pipeline,dashboard} · docker-compose.yml
-├── deploy/gcp/    deploy.sh · cloudrun/*.yaml · k8s/ (conceptual)
+├── frontend/      React + Vite dashboard (deployed to Vercel)
+├── render.yaml    Render Blueprint (backend IaC)
+├── deploy/        k8s/ (conceptual) · scripts (publish-artifacts, smoke tests)
 ├── artifacts/     models, rules, graph state, metrics (git-ignored; synced to bucket)
 ├── reports/       data_quality, rules, ml results, figures
 └── tests/
@@ -638,7 +678,7 @@ FinSight_ai/
 | 6 | Clustering + anomaly detectors per scenario | ML |
 | 7 | Network Explorer: a fraud ring hub and a layering chain | ML + DMW |
 | 8 | Risk Scorer: submit a transaction → score, tier, SHAP waterfall, fired rules, sanctions | All |
-| 9 | Platform: compose `--scale`, Cloud Run URL, cold start vs warm latency, logs | CCT |
+| 9 | Platform: compose `--scale`, live Vercel URL → Render API, cold start vs warm latency, logs | CCT |
 
 ---
 
@@ -648,7 +688,7 @@ FinSight_ai/
 
 **ML:** "We ran 6 classifiers across 3 feature sets, with a v1.0/v1.1 control showing network features help only where real structure exists. We added clustering, three anomaly detectors trained only on legitimate data, CV-based tuning, a calibrated stacking ensemble and SHAP explanations."
 
-**CCT:** "Five stateless FastAPI microservices plus a Streamlit frontend, a batch pipeline running as a Cloud Run Job, and artifacts in a GCS bucket — all on GCP Cloud Run with scale-to-zero, IAM-authenticated service-to-service calls and measured latency/cold-start behaviour."
+**CCT:** "Five stateless FastAPI microservices in Docker, deployed on Render from a `render.yaml` Blueprint, with a React dashboard served from Vercel's CDN. Model artifacts are versioned as GitHub Releases and baked into immutable images, deploys are triggered by Git pushes, and we measured the scale-to-zero vs cold-start trade-off and microservices vs modular-monolith latency."
 
 ---
 
@@ -661,7 +701,7 @@ FinSight_ai/
 5. 6 classifiers × 3 feature sets × 2 dataset versions (a controlled ablation)
 6. Unsupervised + 3 anomaly detectors, per-scenario analysis
 7. Tuning, learning curves, calibrated stacking, SHAP
-8. Microservices + batch job on GCP Cloud Run with object storage and IAM
+8. Microservices (Compose / Render) + static SPA on Vercel's CDN, with CI/CD and IaC
 
 ---
 

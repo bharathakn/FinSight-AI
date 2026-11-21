@@ -1,0 +1,325 @@
+scenario,risk_label,flag_rate,n,model,exp
+S1 normal legitimate,LEGITIMATE,0.02804878048780488,1640,decision_tree,A
+S10 impossible travel,FRAUDULENT,0.8125,16,decision_tree,A
+S10 impossible travel,BORDERLINE,1.0,7,decision_tree,A
+S11 shared device ip,FRAUDULENT,0.8571428571428571,21,decision_tree,A
+S11 shared device ip,BORDERLINE,0.8666666666666667,15,decision_tree,A
+S12 mixed borderline travel,BORDERLINE,0.6470588235294118,17,decision_tree,A
+S2 high value spike,FRAUDULENT,0.35,20,decision_tree,A
+S2 high value spike,BORDERLINE,0.5555555555555556,18,decision_tree,A
+S3 rapid burst,FRAUDULENT,0.0,18,decision_tree,A
+S3 rapid burst,BORDERLINE,0.08333333333333333,12,decision_tree,A
+S4 new beneficiary large tx,FRAUDULENT,0.631578947368421,19,decision_tree,A
+S4 new beneficiary large tx,BORDERLINE,1.0,6,decision_tree,A
+S5 new device suspicious,FRAUDULENT,0.9583333333333334,24,decision_tree,A
+S5 new device suspicious,BORDERLINE,0.8666666666666667,15,decision_tree,A
+S6 structuring splitting,FRAUDULENT,0.9130434782608695,23,decision_tree,A
+S7 layering network,FRAUDULENT,0.3958333333333333,48,decision_tree,A
+S8 mule pass through,FRAUDULENT,0.9,40,decision_tree,A
+S9 fraud ring hub,FRAUDULENT,1.0,41,decision_tree,A
+S1 normal legitimate,LEGITIMATE,0.03902439024390244,1640,decision_tree,B
+S10 impossible travel,FRAUDULENT,1.0,16,decision_tree,B
+S10 impossible travel,BORDERLINE,0.7142857142857143,7,decision_tree,B
+S11 shared device ip,FRAUDULENT,1.0,21,decision_tree,B
+S11 shared device ip,BORDERLINE,0.9333333333333333,15,decision_tree,B
+S12 mixed borderline travel,BORDERLINE,0.17647058823529413,17,decision_tree,B
+S2 high value spike,FRAUDULENT,0.8,20,decision_tree,B
+S2 high value spike,BORDERLINE,0.8333333333333334,18,decision_tree,B
+S3 rapid burst,FRAUDULENT,0.7777777777777778,18,decision_tree,B
+S3 rapid burst,BORDERLINE,0.75,12,decision_tree,B
+S4 new beneficiary large tx,FRAUDULENT,0.8947368421052632,19,decision_tree,B
+S4 new beneficiary large tx,BORDERLINE,0.8333333333333334,6,decision_tree,B
+S5 new device suspicious,FRAUDULENT,1.0,24,decision_tree,B
+S5 new device suspicious,BORDERLINE,1.0,15,decision_tree,B
+S6 structuring splitting,FRAUDULENT,0.8695652173913043,23,decision_tree,B
+S7 layering network,FRAUDULENT,0.5833333333333334,48,decision_tree,B
+S8 mule pass through,FRAUDULENT,0.925,40,decision_tree,B
+S9 fraud ring hub,FRAUDULENT,1.0,41,decision_tree,B
+S1 normal legitimate,LEGITIMATE,0.02804878048780488,1640,decision_tree,C
+S10 impossible travel,FRAUDULENT,1.0,16,decision_tree,C
+S10 impossible travel,BORDERLINE,0.7142857142857143,7,decision_tree,C
+S11 shared device ip,FRAUDULENT,0.9523809523809523,21,decision_tree,C
+S11 shared device ip,BORDERLINE,1.0,15,decision_tree,C
+S12 mixed borderline travel,BORDERLINE,0.17647058823529413,17,decision_tree,C
+S2 high value spike,FRAUDULENT,0.7,20,decision_tree,C
+S2 high value spike,BORDERLINE,0.8333333333333334,18,decision_tree,C
+S3 rapid burst,FRAUDULENT,0.8333333333333334,18,decision_tree,C
+S3 rapid burst,BORDERLINE,0.3333333333333333,12,decision_tree,C
+S4 new beneficiary large tx,FRAUDULENT,1.0,19,decision_tree,C
+S4 new beneficiary large tx,BORDERLINE,1.0,6,decision_tree,C
+S5 new device suspicious,FRAUDULENT,1.0,24,decision_tree,C
+S5 new device suspicious,BORDERLINE,1.0,15,decision_tree,C
+S6 structuring splitting,FRAUDULENT,0.8695652173913043,23,decision_tree,C
+S7 layering network,FRAUDULENT,0.8333333333333334,48,decision_tree,C
+S8 mule pass through,FRAUDULENT,0.925,40,decision_tree,C
+S9 fraud ring hub,FRAUDULENT,1.0,41,decision_tree,C
+S1 normal legitimate,LEGITIMATE,0.10365853658536585,1640,naive_bayes,A
+S10 impossible travel,FRAUDULENT,0.75,16,naive_bayes,A
+S10 impossible travel,BORDERLINE,0.7142857142857143,7,naive_bayes,A
+S11 shared device ip,FRAUDULENT,0.6190476190476191,21,naive_bayes,A
+S11 shared device ip,BORDERLINE,0.8666666666666667,15,naive_bayes,A
+S12 mixed borderline travel,BORDERLINE,0.6470588235294118,17,naive_bayes,A
+S2 high value spike,FRAUDULENT,0.65,20,naive_bayes,A
+S2 high value spike,BORDERLINE,0.6111111111111112,18,naive_bayes,A
+S3 rapid burst,FRAUDULENT,0.0,18,naive_bayes,A
+S3 rapid burst,BORDERLINE,0.0,12,naive_bayes,A
+S4 new beneficiary large tx,FRAUDULENT,0.6842105263157895,19,naive_bayes,A
+S4 new beneficiary large tx,BORDERLINE,0.6666666666666666,6,naive_bayes,A
+S5 new device suspicious,FRAUDULENT,0.875,24,naive_bayes,A
+S5 new device suspicious,BORDERLINE,0.8,15,naive_bayes,A
+S6 structuring splitting,FRAUDULENT,0.782608695652174,23,naive_bayes,A
+S7 layering network,FRAUDULENT,0.4166666666666667,48,naive_bayes,A
+S8 mule pass through,FRAUDULENT,0.65,40,naive_bayes,A
+S9 fraud ring hub,FRAUDULENT,0.8048780487804879,41,naive_bayes,A
+S1 normal legitimate,LEGITIMATE,0.025,1640,naive_bayes,B
+S10 impossible travel,FRAUDULENT,0.9375,16,naive_bayes,B
+S10 impossible travel,BORDERLINE,0.8571428571428571,7,naive_bayes,B
+S11 shared device ip,FRAUDULENT,0.9047619047619048,21,naive_bayes,B
+S11 shared device ip,BORDERLINE,0.9333333333333333,15,naive_bayes,B
+S12 mixed borderline travel,BORDERLINE,0.9411764705882353,17,naive_bayes,B
+S2 high value spike,FRAUDULENT,0.1,20,naive_bayes,B
+S2 high value spike,BORDERLINE,0.1111111111111111,18,naive_bayes,B
+S3 rapid burst,FRAUDULENT,0.7777777777777778,18,naive_bayes,B
+S3 rapid burst,BORDERLINE,0.8333333333333334,12,naive_bayes,B
+S4 new beneficiary large tx,FRAUDULENT,0.8421052631578947,19,naive_bayes,B
+S4 new beneficiary large tx,BORDERLINE,1.0,6,naive_bayes,B
+S5 new device suspicious,FRAUDULENT,0.9166666666666666,24,naive_bayes,B
+S5 new device suspicious,BORDERLINE,0.9333333333333333,15,naive_bayes,B
+S6 structuring splitting,FRAUDULENT,0.6521739130434783,23,naive_bayes,B
+S7 layering network,FRAUDULENT,0.5625,48,naive_bayes,B
+S8 mule pass through,FRAUDULENT,0.4,40,naive_bayes,B
+S9 fraud ring hub,FRAUDULENT,0.6097560975609756,41,naive_bayes,B
+S1 normal legitimate,LEGITIMATE,0.046341463414634146,1640,naive_bayes,C
+S10 impossible travel,FRAUDULENT,0.75,16,naive_bayes,C
+S10 impossible travel,BORDERLINE,0.7142857142857143,7,naive_bayes,C
+S11 shared device ip,FRAUDULENT,0.9523809523809523,21,naive_bayes,C
+S11 shared device ip,BORDERLINE,1.0,15,naive_bayes,C
+S12 mixed borderline travel,BORDERLINE,0.7058823529411765,17,naive_bayes,C
+S2 high value spike,FRAUDULENT,0.15,20,naive_bayes,C
+S2 high value spike,BORDERLINE,0.1111111111111111,18,naive_bayes,C
+S3 rapid burst,FRAUDULENT,1.0,18,naive_bayes,C
+S3 rapid burst,BORDERLINE,0.8333333333333334,12,naive_bayes,C
+S4 new beneficiary large tx,FRAUDULENT,0.7894736842105263,19,naive_bayes,C
+S4 new beneficiary large tx,BORDERLINE,0.8333333333333334,6,naive_bayes,C
+S5 new device suspicious,FRAUDULENT,0.875,24,naive_bayes,C
+S5 new device suspicious,BORDERLINE,0.9333333333333333,15,naive_bayes,C
+S6 structuring splitting,FRAUDULENT,0.782608695652174,23,naive_bayes,C
+S7 layering network,FRAUDULENT,0.6458333333333334,48,naive_bayes,C
+S8 mule pass through,FRAUDULENT,0.65,40,naive_bayes,C
+S9 fraud ring hub,FRAUDULENT,0.9512195121951219,41,naive_bayes,C
+S1 normal legitimate,LEGITIMATE,0.08536585365853659,1640,knn,A
+S10 impossible travel,FRAUDULENT,0.875,16,knn,A
+S10 impossible travel,BORDERLINE,0.42857142857142855,7,knn,A
+S11 shared device ip,FRAUDULENT,0.7619047619047619,21,knn,A
+S11 shared device ip,BORDERLINE,0.8666666666666667,15,knn,A
+S12 mixed borderline travel,BORDERLINE,0.7647058823529411,17,knn,A
+S2 high value spike,FRAUDULENT,0.55,20,knn,A
+S2 high value spike,BORDERLINE,0.7222222222222222,18,knn,A
+S3 rapid burst,FRAUDULENT,0.2222222222222222,18,knn,A
+S3 rapid burst,BORDERLINE,0.25,12,knn,A
+S4 new beneficiary large tx,FRAUDULENT,0.5263157894736842,19,knn,A
+S4 new beneficiary large tx,BORDERLINE,0.5,6,knn,A
+S5 new device suspicious,FRAUDULENT,0.8333333333333334,24,knn,A
+S5 new device suspicious,BORDERLINE,0.8,15,knn,A
+S6 structuring splitting,FRAUDULENT,0.7391304347826086,23,knn,A
+S7 layering network,FRAUDULENT,0.4583333333333333,48,knn,A
+S8 mule pass through,FRAUDULENT,0.775,40,knn,A
+S9 fraud ring hub,FRAUDULENT,0.6829268292682927,41,knn,A
+S1 normal legitimate,LEGITIMATE,0.05304878048780488,1640,knn,B
+S10 impossible travel,FRAUDULENT,1.0,16,knn,B
+S10 impossible travel,BORDERLINE,1.0,7,knn,B
+S11 shared device ip,FRAUDULENT,0.9047619047619048,21,knn,B
+S11 shared device ip,BORDERLINE,1.0,15,knn,B
+S12 mixed borderline travel,BORDERLINE,1.0,17,knn,B
+S2 high value spike,FRAUDULENT,0.25,20,knn,B
+S2 high value spike,BORDERLINE,0.4444444444444444,18,knn,B
+S3 rapid burst,FRAUDULENT,0.8333333333333334,18,knn,B
+S3 rapid burst,BORDERLINE,0.75,12,knn,B
+S4 new beneficiary large tx,FRAUDULENT,0.9473684210526315,19,knn,B
+S4 new beneficiary large tx,BORDERLINE,1.0,6,knn,B
+S5 new device suspicious,FRAUDULENT,0.9166666666666666,24,knn,B
+S5 new device suspicious,BORDERLINE,0.9333333333333333,15,knn,B
+S6 structuring splitting,FRAUDULENT,0.8260869565217391,23,knn,B
+S7 layering network,FRAUDULENT,0.7083333333333334,48,knn,B
+S8 mule pass through,FRAUDULENT,0.6,40,knn,B
+S9 fraud ring hub,FRAUDULENT,0.8292682926829268,41,knn,B
+S1 normal legitimate,LEGITIMATE,0.025,1640,knn,C
+S10 impossible travel,FRAUDULENT,1.0,16,knn,C
+S10 impossible travel,BORDERLINE,1.0,7,knn,C
+S11 shared device ip,FRAUDULENT,0.9047619047619048,21,knn,C
+S11 shared device ip,BORDERLINE,0.8,15,knn,C
+S12 mixed borderline travel,BORDERLINE,0.8823529411764706,17,knn,C
+S2 high value spike,FRAUDULENT,0.1,20,knn,C
+S2 high value spike,BORDERLINE,0.2222222222222222,18,knn,C
+S3 rapid burst,FRAUDULENT,0.8888888888888888,18,knn,C
+S3 rapid burst,BORDERLINE,0.9166666666666666,12,knn,C
+S4 new beneficiary large tx,FRAUDULENT,0.8947368421052632,19,knn,C
+S4 new beneficiary large tx,BORDERLINE,1.0,6,knn,C
+S5 new device suspicious,FRAUDULENT,0.9166666666666666,24,knn,C
+S5 new device suspicious,BORDERLINE,0.9333333333333333,15,knn,C
+S6 structuring splitting,FRAUDULENT,0.8695652173913043,23,knn,C
+S7 layering network,FRAUDULENT,0.6875,48,knn,C
+S8 mule pass through,FRAUDULENT,0.6,40,knn,C
+S9 fraud ring hub,FRAUDULENT,0.9512195121951219,41,knn,C
+S1 normal legitimate,LEGITIMATE,0.021341463414634148,1640,random_forest,A
+S10 impossible travel,FRAUDULENT,0.9375,16,random_forest,A
+S10 impossible travel,BORDERLINE,0.8571428571428571,7,random_forest,A
+S11 shared device ip,FRAUDULENT,1.0,21,random_forest,A
+S11 shared device ip,BORDERLINE,1.0,15,random_forest,A
+S12 mixed borderline travel,BORDERLINE,0.6470588235294118,17,random_forest,A
+S2 high value spike,FRAUDULENT,0.35,20,random_forest,A
+S2 high value spike,BORDERLINE,0.5555555555555556,18,random_forest,A
+S3 rapid burst,FRAUDULENT,0.05555555555555555,18,random_forest,A
+S3 rapid burst,BORDERLINE,0.08333333333333333,12,random_forest,A
+S4 new beneficiary large tx,FRAUDULENT,0.5263157894736842,19,random_forest,A
+S4 new beneficiary large tx,BORDERLINE,0.5,6,random_forest,A
+S5 new device suspicious,FRAUDULENT,0.9583333333333334,24,random_forest,A
+S5 new device suspicious,BORDERLINE,0.9333333333333333,15,random_forest,A
+S6 structuring splitting,FRAUDULENT,0.6956521739130435,23,random_forest,A
+S7 layering network,FRAUDULENT,0.4166666666666667,48,random_forest,A
+S8 mule pass through,FRAUDULENT,0.925,40,random_forest,A
+S9 fraud ring hub,FRAUDULENT,1.0,41,random_forest,A
+S1 normal legitimate,LEGITIMATE,0.014634146341463415,1640,random_forest,B
+S10 impossible travel,FRAUDULENT,1.0,16,random_forest,B
+S10 impossible travel,BORDERLINE,1.0,7,random_forest,B
+S11 shared device ip,FRAUDULENT,1.0,21,random_forest,B
+S11 shared device ip,BORDERLINE,1.0,15,random_forest,B
+S12 mixed borderline travel,BORDERLINE,0.6470588235294118,17,random_forest,B
+S2 high value spike,FRAUDULENT,0.8,20,random_forest,B
+S2 high value spike,BORDERLINE,0.8333333333333334,18,random_forest,B
+S3 rapid burst,FRAUDULENT,0.7222222222222222,18,random_forest,B
+S3 rapid burst,BORDERLINE,0.75,12,random_forest,B
+S4 new beneficiary large tx,FRAUDULENT,1.0,19,random_forest,B
+S4 new beneficiary large tx,BORDERLINE,1.0,6,random_forest,B
+S5 new device suspicious,FRAUDULENT,1.0,24,random_forest,B
+S5 new device suspicious,BORDERLINE,1.0,15,random_forest,B
+S6 structuring splitting,FRAUDULENT,0.8695652173913043,23,random_forest,B
+S7 layering network,FRAUDULENT,0.6666666666666666,48,random_forest,B
+S8 mule pass through,FRAUDULENT,0.9,40,random_forest,B
+S9 fraud ring hub,FRAUDULENT,1.0,41,random_forest,B
+S1 normal legitimate,LEGITIMATE,0.004878048780487805,1640,random_forest,C
+S10 impossible travel,FRAUDULENT,0.9375,16,random_forest,C
+S10 impossible travel,BORDERLINE,0.8571428571428571,7,random_forest,C
+S11 shared device ip,FRAUDULENT,1.0,21,random_forest,C
+S11 shared device ip,BORDERLINE,1.0,15,random_forest,C
+S12 mixed borderline travel,BORDERLINE,0.47058823529411764,17,random_forest,C
+S2 high value spike,FRAUDULENT,0.45,20,random_forest,C
+S2 high value spike,BORDERLINE,0.6666666666666666,18,random_forest,C
+S3 rapid burst,FRAUDULENT,0.7777777777777778,18,random_forest,C
+S3 rapid burst,BORDERLINE,0.5833333333333334,12,random_forest,C
+S4 new beneficiary large tx,FRAUDULENT,0.8421052631578947,19,random_forest,C
+S4 new beneficiary large tx,BORDERLINE,1.0,6,random_forest,C
+S5 new device suspicious,FRAUDULENT,1.0,24,random_forest,C
+S5 new device suspicious,BORDERLINE,1.0,15,random_forest,C
+S6 structuring splitting,FRAUDULENT,0.782608695652174,23,random_forest,C
+S7 layering network,FRAUDULENT,0.7708333333333334,48,random_forest,C
+S8 mule pass through,FRAUDULENT,0.9,40,random_forest,C
+S9 fraud ring hub,FRAUDULENT,1.0,41,random_forest,C
+S1 normal legitimate,LEGITIMATE,0.0524390243902439,1640,xgboost,A
+S10 impossible travel,FRAUDULENT,0.875,16,xgboost,A
+S10 impossible travel,BORDERLINE,0.8571428571428571,7,xgboost,A
+S11 shared device ip,FRAUDULENT,1.0,21,xgboost,A
+S11 shared device ip,BORDERLINE,1.0,15,xgboost,A
+S12 mixed borderline travel,BORDERLINE,0.6470588235294118,17,xgboost,A
+S2 high value spike,FRAUDULENT,0.5,20,xgboost,A
+S2 high value spike,BORDERLINE,0.6111111111111112,18,xgboost,A
+S3 rapid burst,FRAUDULENT,0.2777777777777778,18,xgboost,A
+S3 rapid burst,BORDERLINE,0.4166666666666667,12,xgboost,A
+S4 new beneficiary large tx,FRAUDULENT,0.631578947368421,19,xgboost,A
+S4 new beneficiary large tx,BORDERLINE,0.8333333333333334,6,xgboost,A
+S5 new device suspicious,FRAUDULENT,0.9583333333333334,24,xgboost,A
+S5 new device suspicious,BORDERLINE,1.0,15,xgboost,A
+S6 structuring splitting,FRAUDULENT,1.0,23,xgboost,A
+S7 layering network,FRAUDULENT,0.6666666666666666,48,xgboost,A
+S8 mule pass through,FRAUDULENT,0.9,40,xgboost,A
+S9 fraud ring hub,FRAUDULENT,1.0,41,xgboost,A
+S1 normal legitimate,LEGITIMATE,0.023170731707317073,1640,xgboost,B
+S10 impossible travel,FRAUDULENT,1.0,16,xgboost,B
+S10 impossible travel,BORDERLINE,0.8571428571428571,7,xgboost,B
+S11 shared device ip,FRAUDULENT,0.9523809523809523,21,xgboost,B
+S11 shared device ip,BORDERLINE,1.0,15,xgboost,B
+S12 mixed borderline travel,BORDERLINE,0.29411764705882354,17,xgboost,B
+S2 high value spike,FRAUDULENT,0.75,20,xgboost,B
+S2 high value spike,BORDERLINE,0.6111111111111112,18,xgboost,B
+S3 rapid burst,FRAUDULENT,0.8333333333333334,18,xgboost,B
+S3 rapid burst,BORDERLINE,0.4166666666666667,12,xgboost,B
+S4 new beneficiary large tx,FRAUDULENT,0.9473684210526315,19,xgboost,B
+S4 new beneficiary large tx,BORDERLINE,1.0,6,xgboost,B
+S5 new device suspicious,FRAUDULENT,1.0,24,xgboost,B
+S5 new device suspicious,BORDERLINE,0.9333333333333333,15,xgboost,B
+S6 structuring splitting,FRAUDULENT,1.0,23,xgboost,B
+S7 layering network,FRAUDULENT,0.6458333333333334,48,xgboost,B
+S8 mule pass through,FRAUDULENT,0.9,40,xgboost,B
+S9 fraud ring hub,FRAUDULENT,0.975609756097561,41,xgboost,B
+S1 normal legitimate,LEGITIMATE,0.02378048780487805,1640,xgboost,C
+S10 impossible travel,FRAUDULENT,1.0,16,xgboost,C
+S10 impossible travel,BORDERLINE,0.8571428571428571,7,xgboost,C
+S11 shared device ip,FRAUDULENT,1.0,21,xgboost,C
+S11 shared device ip,BORDERLINE,1.0,15,xgboost,C
+S12 mixed borderline travel,BORDERLINE,0.47058823529411764,17,xgboost,C
+S2 high value spike,FRAUDULENT,0.8,20,xgboost,C
+S2 high value spike,BORDERLINE,0.7222222222222222,18,xgboost,C
+S3 rapid burst,FRAUDULENT,0.8888888888888888,18,xgboost,C
+S3 rapid burst,BORDERLINE,0.6666666666666666,12,xgboost,C
+S4 new beneficiary large tx,FRAUDULENT,0.9473684210526315,19,xgboost,C
+S4 new beneficiary large tx,BORDERLINE,1.0,6,xgboost,C
+S5 new device suspicious,FRAUDULENT,1.0,24,xgboost,C
+S5 new device suspicious,BORDERLINE,1.0,15,xgboost,C
+S6 structuring splitting,FRAUDULENT,0.9565217391304348,23,xgboost,C
+S7 layering network,FRAUDULENT,0.8541666666666666,48,xgboost,C
+S8 mule pass through,FRAUDULENT,0.975,40,xgboost,C
+S9 fraud ring hub,FRAUDULENT,1.0,41,xgboost,C
+S1 normal legitimate,LEGITIMATE,0.048170731707317074,1640,mlp,A
+S10 impossible travel,FRAUDULENT,0.75,16,mlp,A
+S10 impossible travel,BORDERLINE,0.7142857142857143,7,mlp,A
+S11 shared device ip,FRAUDULENT,0.9047619047619048,21,mlp,A
+S11 shared device ip,BORDERLINE,1.0,15,mlp,A
+S12 mixed borderline travel,BORDERLINE,0.6470588235294118,17,mlp,A
+S2 high value spike,FRAUDULENT,0.4,20,mlp,A
+S2 high value spike,BORDERLINE,0.6666666666666666,18,mlp,A
+S3 rapid burst,FRAUDULENT,0.1111111111111111,18,mlp,A
+S3 rapid burst,BORDERLINE,0.08333333333333333,12,mlp,A
+S4 new beneficiary large tx,FRAUDULENT,0.3157894736842105,19,mlp,A
+S4 new beneficiary large tx,BORDERLINE,0.8333333333333334,6,mlp,A
+S5 new device suspicious,FRAUDULENT,0.7916666666666666,24,mlp,A
+S5 new device suspicious,BORDERLINE,0.9333333333333333,15,mlp,A
+S6 structuring splitting,FRAUDULENT,0.43478260869565216,23,mlp,A
+S7 layering network,FRAUDULENT,0.5,48,mlp,A
+S8 mule pass through,FRAUDULENT,0.85,40,mlp,A
+S9 fraud ring hub,FRAUDULENT,0.8780487804878049,41,mlp,A
+S1 normal legitimate,LEGITIMATE,0.042682926829268296,1640,mlp,B
+S10 impossible travel,FRAUDULENT,0.625,16,mlp,B
+S10 impossible travel,BORDERLINE,1.0,7,mlp,B
+S11 shared device ip,FRAUDULENT,0.7619047619047619,21,mlp,B
+S11 shared device ip,BORDERLINE,1.0,15,mlp,B
+S12 mixed borderline travel,BORDERLINE,0.5882352941176471,17,mlp,B
+S2 high value spike,FRAUDULENT,0.5,20,mlp,B
+S2 high value spike,BORDERLINE,0.6666666666666666,18,mlp,B
+S3 rapid burst,FRAUDULENT,0.6666666666666666,18,mlp,B
+S3 rapid burst,BORDERLINE,0.4166666666666667,12,mlp,B
+S4 new beneficiary large tx,FRAUDULENT,0.5789473684210527,19,mlp,B
+S4 new beneficiary large tx,BORDERLINE,0.6666666666666666,6,mlp,B
+S5 new device suspicious,FRAUDULENT,0.9583333333333334,24,mlp,B
+S5 new device suspicious,BORDERLINE,0.9333333333333333,15,mlp,B
+S6 structuring splitting,FRAUDULENT,0.7391304347826086,23,mlp,B
+S7 layering network,FRAUDULENT,0.6875,48,mlp,B
+S8 mule pass through,FRAUDULENT,0.8,40,mlp,B
+S9 fraud ring hub,FRAUDULENT,0.926829268292683,41,mlp,B
+S1 normal legitimate,LEGITIMATE,0.01524390243902439,1640,mlp,C
+S10 impossible travel,FRAUDULENT,0.75,16,mlp,C
+S10 impossible travel,BORDERLINE,0.42857142857142855,7,mlp,C
+S11 shared device ip,FRAUDULENT,0.6666666666666666,21,mlp,C
+S11 shared device ip,BORDERLINE,0.7333333333333333,15,mlp,C
+S12 mixed borderline travel,BORDERLINE,0.4117647058823529,17,mlp,C
+S2 high value spike,FRAUDULENT,0.3,20,mlp,C
+S2 high value spike,BORDERLINE,0.5555555555555556,18,mlp,C
+S3 rapid burst,FRAUDULENT,0.6666666666666666,18,mlp,C
+S3 rapid burst,BORDERLINE,0.4166666666666667,12,mlp,C
+S4 new beneficiary large tx,FRAUDULENT,0.631578947368421,19,mlp,C
+S4 new beneficiary large tx,BORDERLINE,0.6666666666666666,6,mlp,C
+S5 new device suspicious,FRAUDULENT,1.0,24,mlp,C
+S5 new device suspicious,BORDERLINE,1.0,15,mlp,C
+S6 structuring splitting,FRAUDULENT,0.6521739130434783,23,mlp,C
+S7 layering network,FRAUDULENT,0.7083333333333334,48,mlp,C
+S8 mule pass through,FRAUDULENT,0.85,40,mlp,C
+S9 fraud ring hub,FRAUDULENT,0.975609756097561,41,mlp,C

@@ -1,0 +1,403 @@
+{
+  "rows": 10000,
+  "label_counts": {
+    "LEGITIMATE": 8200,
+    "FRAUDULENT": 1348,
+    "BORDERLINE": 452
+  },
+  "fraud_rate": 0.1348,
+  "fraud_rate_by_channel": {
+    "NEFT": 0.1372,
+    "RTGS": 0.1461,
+    "UPI": 0.1329
+  },
+  "fraud_rate_by_hour_range": [
+    0.1,
+    0.2667
+  ],
+  "flags": [
+    {
+      "flag": "NEW_DEVICE",
+      "support": 0.2218,
+      "fraud_rate_given_flag": 0.3206,
+      "lift": 2.38,
+      "share_LEGITIMATE": 0.1528,
+      "share_FRAUDULENT": 0.5274,
+      "share_BORDERLINE": 0.5619
+    },
+    {
+      "flag": "NEW_BENEFICIARY",
+      "support": 0.2444,
+      "fraud_rate_given_flag": 0.2676,
+      "lift": 1.99,
+      "share_LEGITIMATE": 0.1963,
+      "share_FRAUDULENT": 0.4852,
+      "share_BORDERLINE": 0.3982
+    },
+    {
+      "flag": "RECENT_BENEFICIARY (<24h)",
+      "support": 0.0906,
+      "fraud_rate_given_flag": 0.7616,
+      "lift": 5.65,
+      "share_LEGITIMATE": 0.0,
+      "share_FRAUDULENT": 0.5119,
+      "share_BORDERLINE": 0.4779
+    },
+    {
+      "flag": "FAR_FROM_HOME (>100km)",
+      "support": 0.0575,
+      "fraud_rate_given_flag": 0.6574,
+      "lift": 4.88,
+      "share_LEGITIMATE": 0.0,
+      "share_FRAUDULENT": 0.2804,
+      "share_BORDERLINE": 0.4358
+    },
+    {
+      "flag": "HIGH_AMOUNT_SPIKE (>5\u00d7)",
+      "support": 0.2683,
+      "fraud_rate_given_flag": 0.3321,
+      "lift": 2.46,
+      "share_LEGITIMATE": 0.1829,
+      "share_FRAUDULENT": 0.661,
+      "share_BORDERLINE": 0.646
+    },
+    {
+      "flag": "HIGH_VALUE (\u2265\u20b950k)",
+      "support": 0.1923,
+      "fraud_rate_given_flag": 0.35,
+      "lift": 2.6,
+      "share_LEGITIMATE": 0.1265,
+      "share_FRAUDULENT": 0.4993,
+      "share_BORDERLINE": 0.4712
+    },
+    {
+      "flag": "NEAR_THRESHOLD (\u20b945\u201350k)",
+      "support": 0.0317,
+      "fraud_rate_given_flag": 0.7287,
+      "lift": 5.41,
+      "share_LEGITIMATE": 0.0071,
+      "share_FRAUDULENT": 0.1714,
+      "share_BORDERLINE": 0.0619
+    },
+    {
+      "flag": "ODD_HOUR (<6 or >22)",
+      "support": 0.1101,
+      "fraud_rate_given_flag": 0.1953,
+      "lift": 1.45,
+      "share_LEGITIMATE": 0.1017,
+      "share_FRAUDULENT": 0.1595,
+      "share_BORDERLINE": 0.115
+    },
+    {
+      "flag": "PASS_THROUGH",
+      "support": 0.0163,
+      "fraud_rate_given_flag": 0.9939,
+      "lift": 7.37,
+      "share_LEGITIMATE": 0.0001,
+      "share_FRAUDULENT": 0.1202,
+      "share_BORDERLINE": 0.0
+    },
+    {
+      "flag": "SHARED_DEVICE (\u22653 accts)",
+      "support": 0.0858,
+      "fraud_rate_given_flag": 0.1981,
+      "lift": 1.47,
+      "share_LEGITIMATE": 0.0762,
+      "share_FRAUDULENT": 0.1261,
+      "share_BORDERLINE": 0.1394
+    }
+  ],
+  "rq1_feature_ranking_v1_1": [
+    {
+      "feature": "log_amount",
+      "auc": 0.8499,
+      "mutual_info": 0.1629,
+      "group": "A transaction"
+    },
+    {
+      "feature": "amount_ratio_vs_30d_avg",
+      "auc": 0.8081,
+      "mutual_info": 0.0886,
+      "group": "B behavioural"
+    },
+    {
+      "feature": "time_since_beneficiary_added_min",
+      "auc": 0.786,
+      "mutual_info": 0.1082,
+      "group": "B behavioural"
+    },
+    {
+      "feature": "distance_from_home_km",
+      "auc": 0.7388,
+      "mutual_info": 0.1061,
+      "group": "B behavioural"
+    },
+    {
+      "feature": "is_new_device",
+      "auc": 0.6766,
+      "mutual_info": 0.0343,
+      "group": "B behavioural"
+    },
+    {
+      "feature": "forward_ratio",
+      "auc": 0.6439,
+      "mutual_info": 0.068,
+      "group": "C network"
+    },
+    {
+      "feature": "is_new_beneficiary",
+      "auc": 0.6391,
+      "mutual_info": 0.0187,
+      "group": "B behavioural"
+    },
+    {
+      "feature": "same_community",
+      "auc": 0.6069,
+      "mutual_info": 0.0222,
+      "group": "C network"
+    },
+    {
+      "feature": "sec_since_sender_last_inflow",
+      "auc": 0.583,
+      "mutual_info": 0.0405,
+      "group": "C network"
+    },
+    {
+      "feature": "account_balance_before",
+      "auc": 0.5817,
+      "mutual_info": 0.0159,
+      "group": "A transaction"
+    },
+    {
+      "feature": "sender_distinct_receivers_24h",
+      "auc": 0.5664,
+      "mutual_info": 0.0114,
+      "group": "C network"
+    },
+    {
+      "feature": "sender_tx_24h",
+      "auc": 0.5664,
+      "mutual_info": 0.0195,
+      "group": "C network"
+    },
+    {
+      "feature": "receiver_distinct_senders_24h",
+      "auc": 0.5645,
+      "mutual_info": 0.0193,
+      "group": "C network"
+    },
+    {
+      "feature": "receiver_tx_in_24h",
+      "auc": 0.5645,
+      "mutual_info": 0.0214,
+      "group": "C network"
+    },
+    {
+      "feature": "receiver_pagerank",
+      "auc": 0.5638,
+      "mutual_info": 0.0367,
+      "group": "C network"
+    },
+    {
+      "feature": "chain_depth",
+      "auc": 0.56,
+      "mutual_info": 0.0344,
+      "group": "C network"
+    },
+    {
+      "feature": "is_pass_through",
+      "auc": 0.56,
+      "mutual_info": 0.0332,
+      "group": "C network"
+    },
+    {
+      "feature": "receiver_distinct_senders_7d",
+      "auc": 0.5569,
+      "mutual_info": 0.0152,
+      "group": "C network"
+    },
+    {
+      "feature": "time_since_last_tx_sec",
+      "auc": 0.5476,
+      "mutual_info": 0.0085,
+      "group": "B behavioural"
+    },
+    {
+      "feature": "device_associated_accounts",
+      "auc": 0.539,
+      "mutual_info": 0.0145,
+      "group": "B behavioural"
+    },
+    {
+      "feature": "sender_tx_1h",
+      "auc": 0.533,
+      "mutual_info": 0.005,
+      "group": "C network"
+    },
+    {
+      "feature": "sender_community_size",
+      "auc": 0.5294,
+      "mutual_info": 0.0028,
+      "group": "C network"
+    },
+    {
+      "feature": "ip_distinct_accounts",
+      "auc": 0.5293,
+      "mutual_info": 0.007,
+      "group": "C network"
+    },
+    {
+      "feature": "sender_tx_10m",
+      "auc": 0.5269,
+      "mutual_info": 0.0086,
+      "group": "C network"
+    },
+    {
+      "feature": "device_distinct_accounts",
+      "auc": 0.5262,
+      "mutual_info": 0.0033,
+      "group": "C network"
+    },
+    {
+      "feature": "sender_pagerank",
+      "auc": 0.524,
+      "mutual_info": 0.0254,
+      "group": "C network"
+    },
+    {
+      "feature": "tx_frequency_24h",
+      "auc": 0.523,
+      "mutual_info": 0.0,
+      "group": "B behavioural"
+    },
+    {
+      "feature": "receiver_clustering",
+      "auc": 0.5198,
+      "mutual_info": 0.0327,
+      "group": "C network"
+    },
+    {
+      "feature": "sender_declared_annual_income_inr",
+      "auc": 0.5189,
+      "mutual_info": 0.0177,
+      "group": "B behavioural"
+    },
+    {
+      "feature": "receiver_community_size",
+      "auc": 0.516,
+      "mutual_info": 0.0009,
+      "group": "C network"
+    },
+    {
+      "feature": "sender_bene_min_prior_tx",
+      "auc": 0.5153,
+      "mutual_info": 0.0027,
+      "group": "B behavioural"
+    },
+    {
+      "feature": "device_age_days",
+      "auc": 0.5133,
+      "mutual_info": 0.0191,
+      "group": "B behavioural"
+    },
+    {
+      "feature": "sender_historical_30d_avg_balance_inr",
+      "auc": 0.5119,
+      "mutual_info": 0.0256,
+      "group": "A transaction"
+    },
+    {
+      "feature": "receiver_account_age_days",
+      "auc": 0.5116,
+      "mutual_info": 0.0275,
+      "group": "A transaction"
+    },
+    {
+      "feature": "sender_account_age_days",
+      "auc": 0.5099,
+      "mutual_info": 0.0158,
+      "group": "A transaction"
+    },
+    {
+      "feature": "sender_historical_30d_avg_tx_amt_inr",
+      "auc": 0.507,
+      "mutual_info": 0.0242,
+      "group": "A transaction"
+    },
+    {
+      "feature": "device_is_registered",
+      "auc": 0.504,
+      "mutual_info": 0.0052,
+      "group": "B behavioural"
+    },
+    {
+      "feature": "sender_historical_30d_tx_count",
+      "auc": 0.5035,
+      "mutual_info": 0.0016,
+      "group": "A transaction"
+    },
+    {
+      "feature": "sender_bene_count",
+      "auc": 0.5033,
+      "mutual_info": 0.0,
+      "group": "B behavioural"
+    },
+    {
+      "feature": "sender_pep_flag",
+      "auc": 0.5022,
+      "mutual_info": 0.0056,
+      "group": "B behavioural"
+    },
+    {
+      "feature": "hour_of_day",
+      "auc": 0.5018,
+      "mutual_info": 0.0,
+      "group": "A transaction"
+    },
+    {
+      "feature": "sender_bene_added_7d",
+      "auc": 0.5017,
+      "mutual_info": 0.0022,
+      "group": "B behavioural"
+    },
+    {
+      "feature": "day_of_week",
+      "auc": 0.5004,
+      "mutual_info": 0.0044,
+      "group": "A transaction"
+    }
+  ],
+  "rq1_top10": [
+    "log_amount",
+    "amount_ratio_vs_30d_avg",
+    "time_since_beneficiary_added_min",
+    "distance_from_home_km",
+    "is_new_device",
+    "forward_ratio",
+    "is_new_beneficiary",
+    "same_community",
+    "sec_since_sender_last_inflow",
+    "account_balance_before"
+  ],
+  "network_auc_max": {
+    "v1.0": 0.6795,
+    "v1.1": 0.6439
+  },
+  "mule_suspect_fraud_rate_v1_0": 0.1128,
+  "figures": {
+    "eda_01_label_overview": "/mnt/data/bharatha_kn/On_Going_Projects/cct/FinSight_ai/reports/figures/eda_01_label_overview.png",
+    "eda_02_amount_by_label": "/mnt/data/bharatha_kn/On_Going_Projects/cct/FinSight_ai/reports/figures/eda_02_amount_by_label.png",
+    "eda_03_fraud_rate_time_channel": "/mnt/data/bharatha_kn/On_Going_Projects/cct/FinSight_ai/reports/figures/eda_03_fraud_rate_time_channel.png",
+    "eda_04_geo": "/mnt/data/bharatha_kn/On_Going_Projects/cct/FinSight_ai/reports/figures/eda_04_geo.png",
+    "eda_05_correlation": "/mnt/data/bharatha_kn/On_Going_Projects/cct/FinSight_ai/reports/figures/eda_05_correlation.png",
+    "eda_06_feature_auc_v10_v11": "/mnt/data/bharatha_kn/On_Going_Projects/cct/FinSight_ai/reports/figures/eda_06_feature_auc_v10_v11.png",
+    "eda_07_behaviour_flags": "/mnt/data/bharatha_kn/On_Going_Projects/cct/FinSight_ai/reports/figures/eda_07_behaviour_flags.png",
+    "eda_08_scenario_profile": "/mnt/data/bharatha_kn/On_Going_Projects/cct/FinSight_ai/reports/figures/eda_08_scenario_profile.png",
+    "eda_09_borderline_vs_fraud": "/mnt/data/bharatha_kn/On_Going_Projects/cct/FinSight_ai/reports/figures/eda_09_borderline_vs_fraud.png",
+    "eda_10_daily_volume": "/mnt/data/bharatha_kn/On_Going_Projects/cct/FinSight_ai/reports/figures/eda_10_daily_volume.png",
+    "eda_11_fanin_distribution": "/mnt/data/bharatha_kn/On_Going_Projects/cct/FinSight_ai/reports/figures/eda_11_fanin_distribution.png",
+    "eda_12_network_examples": "/mnt/data/bharatha_kn/On_Going_Projects/cct/FinSight_ai/reports/figures/eda_12_network_examples.png",
+    "eda_13_camouflage": "/mnt/data/bharatha_kn/On_Going_Projects/cct/FinSight_ai/reports/figures/eda_13_camouflage.png",
+    "eda_14_network_signal_by_scenario": "/mnt/data/bharatha_kn/On_Going_Projects/cct/FinSight_ai/reports/figures/eda_14_network_signal_by_scenario.png"
+  }
+}
