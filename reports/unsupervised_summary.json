@@ -1,0 +1,469 @@
+{
+  "clustering": {
+    "B": {
+      "n_features_after_encoding": 44,
+      "k": 3,
+      "silhouette": 0.12118261762632924,
+      "davies_bouldin": 2.777193763921062,
+      "kmeans_vs_label": {
+        "ari": 0.30217849719169315,
+        "nmi": 0.18751309971612057
+      },
+      "flag_high_fraud_clusters": {
+        "flagged_clusters": [
+          1
+        ],
+        "precision": 0.40768886902101026,
+        "recall": 0.6765578635014837
+      },
+      "profile": {
+        "0": [
+          [
+            "sender_declared_annual_income_inr",
+            1.75
+          ],
+          [
+            "sender_historical_30d_avg_balance_inr",
+            1.72
+          ],
+          [
+            "sender_historical_30d_avg_tx_amt_inr",
+            1.65
+          ],
+          [
+            "sender_kyc_status_VERIFIED",
+            0.93
+          ]
+        ],
+        "1": [
+          [
+            "amount_ratio_vs_30d_avg",
+            1.39
+          ],
+          [
+            "log_amount",
+            1.21
+          ],
+          [
+            "sender_customer_type_INDIVIDUAL",
+            0.96
+          ],
+          [
+            "time_since_beneficiary_added_min",
+            -0.95
+          ]
+        ],
+        "2": [
+          [
+            "sender_customer_type_INDIVIDUAL",
+            0.97
+          ],
+          [
+            "sender_kyc_status_VERIFIED",
+            0.92
+          ],
+          [
+            "sender_account_type_SAVINGS",
+            0.84
+          ],
+          [
+            "channel_UPI",
+            0.82
+          ]
+        ]
+      },
+      "dbscan": {
+        "min_samples": 10,
+        "eps": 4.648306548486333,
+        "clusters": 3,
+        "noise_rate": 0.0172,
+        "noise_n": 172,
+        "fraud_rate_noise": 0.4127906976744186,
+        "fraud_rate_clustered": 0.12993487993487993,
+        "noise_rate_by_label": {
+          "LEGITIMATE": 0.008170731707317073,
+          "FRAUDULENT": 0.052670623145400594,
+          "BORDERLINE": 0.0752212389380531
+        },
+        "vs_label": {
+          "ari": 0.05247444669321916,
+          "nmi": 0.025390263041762517
+        }
+      }
+    },
+    "C": {
+      "n_features_after_encoding": 63,
+      "k": 4,
+      "silhouette": 0.15810340405399842,
+      "davies_bouldin": 2.3718631822600273,
+      "kmeans_vs_label": {
+        "ari": 0.47251537003409805,
+        "nmi": 0.2708917653124098
+      },
+      "flag_high_fraud_clusters": {
+        "flagged_clusters": [
+          0,
+          2,
+          3
+        ],
+        "precision": 0.43097014925373134,
+        "recall": 0.8568249258160238
+      },
+      "profile": {
+        "0": [
+          [
+            "sender_tx_10m",
+            6.95
+          ],
+          [
+            "sender_tx_1h",
+            6.65
+          ],
+          [
+            "time_since_last_tx_sec",
+            -4.35
+          ],
+          [
+            "sender_tx_24h",
+            2.95
+          ]
+        ],
+        "1": [
+          [
+            "sender_kyc_status_VERIFIED",
+            0.92
+          ],
+          [
+            "sender_customer_type_INDIVIDUAL",
+            0.86
+          ],
+          [
+            "channel_UPI",
+            0.8
+          ],
+          [
+            "receiver_account_type_SAVINGS",
+            0.76
+          ]
+        ],
+        "2": [
+          [
+            "amount_ratio_vs_30d_avg",
+            1.35
+          ],
+          [
+            "same_community",
+            1.3
+          ],
+          [
+            "log_amount",
+            1.3
+          ],
+          [
+            "forward_ratio",
+            1.01
+          ]
+        ],
+        "3": [
+          [
+            "receiver_tx_in_24h",
+            4.0
+          ],
+          [
+            "receiver_distinct_senders_24h",
+            4.0
+          ],
+          [
+            "receiver_pagerank",
+            3.37
+          ],
+          [
+            "receiver_distinct_senders_7d",
+            2.52
+          ]
+        ]
+      },
+      "dbscan": {
+        "min_samples": 10,
+        "eps": 6.782248539569395,
+        "clusters": 4,
+        "noise_rate": 0.0136,
+        "noise_n": 136,
+        "fraud_rate_noise": 0.5514705882352942,
+        "fraud_rate_clustered": 0.12905515004055151,
+        "noise_rate_by_label": {
+          "LEGITIMATE": 0.004634146341463414,
+          "FRAUDULENT": 0.055637982195845696,
+          "BORDERLINE": 0.05088495575221239
+        },
+        "vs_label": {
+          "ari": 0.13367792462485237,
+          "nmi": 0.09753652003022667
+        }
+      }
+    }
+  },
+  "anomaly": {
+    "train_rows_legit": 4920,
+    "reference_rows_legit_val": 1640,
+    "test_rows": 2000,
+    "ae_epochs": 384,
+    "ae_best_val_loss": 0.34953874349594116,
+    "best_detector_expC": {
+      "detector": "ocsvm_nu0.05",
+      "pr_auc": 0.5544,
+      "roc_auc": 0.8736,
+      "recall_at_1pct_fpr": 0.0444,
+      "p95_precision": 0.5406,
+      "p95_recall": 0.7148,
+      "p95_borderline_flag_rate": 0.8
+    },
+    "results": [
+      {
+        "exp": "B",
+        "detector": "isolation_forest",
+        "pr_auc": 0.2465,
+        "roc_auc": 0.6884,
+        "recall_at_1pct_fpr": 0.037,
+        "p95_threshold": 0.5412,
+        "p95_precision": 0.2977,
+        "p95_recall": 0.1444,
+        "p95_f1": 0.1945,
+        "p95_flag_rate": 0.0655,
+        "p95_borderline_flag_rate": 0.1111,
+        "p99_threshold": 0.5723,
+        "p99_precision": 0.4324,
+        "p99_recall": 0.0593,
+        "p99_f1": 0.1042,
+        "p99_flag_rate": 0.0185,
+        "p99_borderline_flag_rate": 0.0222
+      },
+      {
+        "exp": "B",
+        "detector": "ocsvm_nu0.01",
+        "pr_auc": 0.5439,
+        "roc_auc": 0.8062,
+        "recall_at_1pct_fpr": 0.1704,
+        "p95_threshold": -0.0549,
+        "p95_precision": 0.5308,
+        "p95_recall": 0.6704,
+        "p95_f1": 0.5925,
+        "p95_flag_rate": 0.1705,
+        "p95_borderline_flag_rate": 0.8111,
+        "p99_threshold": 0.2869,
+        "p99_precision": 0.6434,
+        "p99_recall": 0.6148,
+        "p99_f1": 0.6288,
+        "p99_flag_rate": 0.129,
+        "p99_borderline_flag_rate": 0.8
+      },
+      {
+        "exp": "B",
+        "detector": "ocsvm_nu0.05",
+        "pr_auc": 0.5464,
+        "roc_auc": 0.8109,
+        "recall_at_1pct_fpr": 0.1593,
+        "p95_threshold": 0.6375,
+        "p95_precision": 0.5485,
+        "p95_recall": 0.6704,
+        "p95_f1": 0.6033,
+        "p95_flag_rate": 0.165,
+        "p95_borderline_flag_rate": 0.8111,
+        "p99_threshold": 3.64,
+        "p99_precision": 0.6486,
+        "p99_recall": 0.6222,
+        "p99_f1": 0.6352,
+        "p99_flag_rate": 0.1295,
+        "p99_borderline_flag_rate": 0.8
+      },
+      {
+        "exp": "B",
+        "detector": "autoencoder",
+        "pr_auc": 0.5512,
+        "roc_auc": 0.8449,
+        "recall_at_1pct_fpr": 0.1333,
+        "p95_threshold": 0.5069,
+        "p95_precision": 0.5536,
+        "p95_recall": 0.6889,
+        "p95_f1": 0.6139,
+        "p95_flag_rate": 0.168,
+        "p95_borderline_flag_rate": 0.8,
+        "p99_threshold": 0.7148,
+        "p99_precision": 0.6391,
+        "p99_recall": 0.6296,
+        "p99_f1": 0.6343,
+        "p99_flag_rate": 0.133,
+        "p99_borderline_flag_rate": 0.8
+      },
+      {
+        "exp": "C",
+        "detector": "isolation_forest",
+        "pr_auc": 0.3585,
+        "roc_auc": 0.7779,
+        "recall_at_1pct_fpr": 0.0778,
+        "p95_threshold": 0.5198,
+        "p95_precision": 0.4074,
+        "p95_recall": 0.2852,
+        "p95_f1": 0.3355,
+        "p95_flag_rate": 0.0945,
+        "p95_borderline_flag_rate": 0.2,
+        "p99_threshold": 0.5529,
+        "p99_precision": 0.5208,
+        "p99_recall": 0.0926,
+        "p99_f1": 0.1572,
+        "p99_flag_rate": 0.024,
+        "p99_borderline_flag_rate": 0.0333
+      },
+      {
+        "exp": "C",
+        "detector": "ocsvm_nu0.01",
+        "pr_auc": 0.5529,
+        "roc_auc": 0.8729,
+        "recall_at_1pct_fpr": 0.0481,
+        "p95_threshold": 0.0007,
+        "p95_precision": 0.5411,
+        "p95_recall": 0.7074,
+        "p95_f1": 0.6132,
+        "p95_flag_rate": 0.1765,
+        "p95_borderline_flag_rate": 0.8,
+        "p99_threshold": 0.3024,
+        "p99_precision": 0.6593,
+        "p99_recall": 0.6593,
+        "p99_f1": 0.6593,
+        "p99_flag_rate": 0.135,
+        "p99_borderline_flag_rate": 0.8
+      },
+      {
+        "exp": "C",
+        "detector": "ocsvm_nu0.05",
+        "pr_auc": 0.5544,
+        "roc_auc": 0.8736,
+        "recall_at_1pct_fpr": 0.0444,
+        "p95_threshold": 0.377,
+        "p95_precision": 0.5406,
+        "p95_recall": 0.7148,
+        "p95_f1": 0.6156,
+        "p95_flag_rate": 0.1785,
+        "p95_borderline_flag_rate": 0.8,
+        "p99_threshold": 3.1614,
+        "p99_precision": 0.6541,
+        "p99_recall": 0.6444,
+        "p99_f1": 0.6493,
+        "p99_flag_rate": 0.133,
+        "p99_borderline_flag_rate": 0.8
+      },
+      {
+        "exp": "C",
+        "detector": "autoencoder",
+        "pr_auc": 0.5432,
+        "roc_auc": 0.8722,
+        "recall_at_1pct_fpr": 0.0815,
+        "p95_threshold": 0.6308,
+        "p95_precision": 0.5465,
+        "p95_recall": 0.6963,
+        "p95_f1": 0.6124,
+        "p95_flag_rate": 0.172,
+        "p95_borderline_flag_rate": 0.8111,
+        "p99_threshold": 0.7973,
+        "p99_precision": 0.6394,
+        "p99_recall": 0.637,
+        "p99_f1": 0.6382,
+        "p99_flag_rate": 0.1345,
+        "p99_borderline_flag_rate": 0.8
+      }
+    ],
+    "complementarity": {
+      "xgb_threshold": 0.09596942365169525,
+      "test_frauds": 270,
+      "xgb_missed": 16,
+      "caught_by": {
+        "isolation_forest": 2,
+        "ocsvm_nu0.01": 4,
+        "ocsvm_nu0.05": 4,
+        "autoencoder": 4
+      },
+      "missed_scenarios": {
+        "S7 layering network": 7,
+        "S2 high value spike": 4,
+        "S3 rapid burst": 2,
+        "S6 structuring splitting": 1,
+        "S4 new beneficiary large tx": 1,
+        "S8 mule pass through": 1
+      }
+    },
+    "spearman_vs_xgb": {
+      "isolation_forest": 0.51,
+      "ocsvm_nu0.01": 0.495,
+      "ocsvm_nu0.05": 0.5,
+      "autoencoder": 0.492
+    }
+  },
+  "onnx_parity": {
+    "max_abs_diff_reconstruction": 0.0,
+    "max_abs_diff_error": 4.76837158203125e-07,
+    "rows": 2000,
+    "onnx_bytes": 23752,
+    "pass": true
+  },
+  "paysim_if": {
+    "rows_scored": 2770409,
+    "fraud_rows": 8213,
+    "fraud_rate": 0.002964544224336551,
+    "fit_sample": 250000,
+    "wrangle_seconds": 0.92,
+    "feature_sets": {
+      "raw": {
+        "n_features": 7,
+        "fit_seconds": 0.51,
+        "score_seconds": 21.53,
+        "rows_per_second": 128657,
+        "pr_auc": 0.3409147007853698,
+        "roc_auc": 0.8918544964746997,
+        "recall_at_1pct_fpr": 0.5250213076829416,
+        "p95_threshold": 0.5833212767624038,
+        "p95_precision": 0.03575941825954463,
+        "p95_recall": 0.6029465481553634,
+        "p95_f1": 0.0675146904440536,
+        "p95_flag_rate": 0.04998576022529525,
+        "p99_threshold": 0.6347551797808619,
+        "p99_precision": 0.15431274145214283,
+        "p99_recall": 0.5203944965298917,
+        "p99_f1": 0.2380395433027012,
+        "p99_flag_rate": 0.009997440811086016
+      },
+      "raw+balance_error": {
+        "n_features": 9,
+        "fit_seconds": 0.47,
+        "score_seconds": 21.13,
+        "rows_per_second": 131090,
+        "pr_auc": 0.4875219782704335,
+        "roc_auc": 0.953404081072055,
+        "recall_at_1pct_fpr": 0.5206380129063679,
+        "p95_threshold": 0.5732945703654182,
+        "p95_precision": 0.04017331375314422,
+        "p95_recall": 0.6728357482040668,
+        "p95_f1": 0.07581962995739777,
+        "p95_flag_rate": 0.04965115259154876,
+        "p99_threshold": 0.6285249823700049,
+        "p99_precision": 0.15506549737643563,
+        "p99_recall": 0.51455010349446,
+        "p99_f1": 0.23831275023966617,
+        "p99_flag_rate": 0.009837175666120057
+      }
+    },
+    "peak_rss_mb": 1964.7
+  },
+  "runtime_seconds": 152.5,
+  "figures": [
+    "unsup_01_kmeans_selection.png",
+    "unsup_02_cluster_composition.png",
+    "unsup_03_embeddings.png",
+    "unsup_04_dbscan.png",
+    "unsup_05_detector_pr.png",
+    "unsup_06_detector_bars.png",
+    "unsup_07_scenario_heatmap.png",
+    "unsup_08_autoencoder.png",
+    "unsup_09_complementarity.png",
+    "unsup_10_paysim_if.png"
+  ]
+}

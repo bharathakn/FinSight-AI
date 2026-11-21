@@ -137,6 +137,21 @@ def stage_train_supervised():
              b["test_pr_auc"], b["test_f1"], s["runtime_seconds"])
 
 
+def stage_unsupervised():
+    """Phase 6: K-Means / DBSCAN / PCA / t-SNE, IF · OC-SVM · AE (ONNX) on legit rows, PaySim IF scale track."""
+    import warnings
+
+    from finsight.ml.unsupervised import run_all
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        s = run_all()
+    b = s["anomaly"]["best_detector_expC"]
+    log.info("unsupervised: K=%d (ARI %.3f); best detector %s PR-AUC %.3f; ONNX parity %s; %.0fs",
+             s["clustering"]["C"]["k"], s["clustering"]["C"]["kmeans_vs_label"]["ari"], b["detector"], b["pr_auc"],
+             s["onnx_parity"]["pass"], s["runtime_seconds"])
+
+
 STAGES = {
     "inject": stage_inject,
     "wrangle": stage_wrangle,
@@ -145,6 +160,7 @@ STAGES = {
     "eda": stage_eda,
     "mining": stage_mining,
     "train_supervised": stage_train_supervised,
+    "unsupervised": stage_unsupervised,
 }
 
 

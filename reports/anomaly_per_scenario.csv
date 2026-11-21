@@ -1,0 +1,91 @@
+scenario,risk_label,flag_rate,n,detector
+S1 normal legitimate,LEGITIMATE,0.05731707317073171,1640,isolation_forest
+S10 impossible travel,FRAUDULENT,0.0625,16,isolation_forest
+S10 impossible travel,BORDERLINE,0.14285714285714285,7,isolation_forest
+S11 shared device ip,FRAUDULENT,0.3333333333333333,21,isolation_forest
+S11 shared device ip,BORDERLINE,0.2,15,isolation_forest
+S12 mixed borderline travel,BORDERLINE,0.11764705882352941,17,isolation_forest
+S2 high value spike,FRAUDULENT,0.05,20,isolation_forest
+S2 high value spike,BORDERLINE,0.05555555555555555,18,isolation_forest
+S3 rapid burst,FRAUDULENT,0.7222222222222222,18,isolation_forest
+S3 rapid burst,BORDERLINE,0.6666666666666666,12,isolation_forest
+S4 new beneficiary large tx,FRAUDULENT,0.10526315789473684,19,isolation_forest
+S4 new beneficiary large tx,BORDERLINE,0.3333333333333333,6,isolation_forest
+S5 new device suspicious,FRAUDULENT,0.2916666666666667,24,isolation_forest
+S5 new device suspicious,BORDERLINE,0.06666666666666667,15,isolation_forest
+S6 structuring splitting,FRAUDULENT,0.2608695652173913,23,isolation_forest
+S7 layering network,FRAUDULENT,0.3333333333333333,48,isolation_forest
+S8 mule pass through,FRAUDULENT,0.075,40,isolation_forest
+S9 fraud ring hub,FRAUDULENT,0.5121951219512195,41,isolation_forest
+S1 normal legitimate,LEGITIMATE,0.054878048780487805,1640,ocsvm_nu0.01
+S10 impossible travel,FRAUDULENT,1.0,16,ocsvm_nu0.01
+S10 impossible travel,BORDERLINE,1.0,7,ocsvm_nu0.01
+S11 shared device ip,FRAUDULENT,0.9523809523809523,21,ocsvm_nu0.01
+S11 shared device ip,BORDERLINE,1.0,15,ocsvm_nu0.01
+S12 mixed borderline travel,BORDERLINE,1.0,17,ocsvm_nu0.01
+S2 high value spike,FRAUDULENT,0.05,20,ocsvm_nu0.01
+S2 high value spike,BORDERLINE,0.0,18,ocsvm_nu0.01
+S3 rapid burst,FRAUDULENT,1.0,18,ocsvm_nu0.01
+S3 rapid burst,BORDERLINE,1.0,12,ocsvm_nu0.01
+S4 new beneficiary large tx,FRAUDULENT,1.0,19,ocsvm_nu0.01
+S4 new beneficiary large tx,BORDERLINE,1.0,6,ocsvm_nu0.01
+S5 new device suspicious,FRAUDULENT,1.0,24,ocsvm_nu0.01
+S5 new device suspicious,BORDERLINE,1.0,15,ocsvm_nu0.01
+S6 structuring splitting,FRAUDULENT,0.782608695652174,23,ocsvm_nu0.01
+S7 layering network,FRAUDULENT,0.625,48,ocsvm_nu0.01
+S8 mule pass through,FRAUDULENT,0.4,40,ocsvm_nu0.01
+S9 fraud ring hub,FRAUDULENT,0.7073170731707317,41,ocsvm_nu0.01
+S1 normal legitimate,LEGITIMATE,0.05609756097560976,1640,ocsvm_nu0.05
+S10 impossible travel,FRAUDULENT,1.0,16,ocsvm_nu0.05
+S10 impossible travel,BORDERLINE,1.0,7,ocsvm_nu0.05
+S11 shared device ip,FRAUDULENT,0.9523809523809523,21,ocsvm_nu0.05
+S11 shared device ip,BORDERLINE,1.0,15,ocsvm_nu0.05
+S12 mixed borderline travel,BORDERLINE,1.0,17,ocsvm_nu0.05
+S2 high value spike,FRAUDULENT,0.05,20,ocsvm_nu0.05
+S2 high value spike,BORDERLINE,0.0,18,ocsvm_nu0.05
+S3 rapid burst,FRAUDULENT,1.0,18,ocsvm_nu0.05
+S3 rapid burst,BORDERLINE,1.0,12,ocsvm_nu0.05
+S4 new beneficiary large tx,FRAUDULENT,1.0,19,ocsvm_nu0.05
+S4 new beneficiary large tx,BORDERLINE,1.0,6,ocsvm_nu0.05
+S5 new device suspicious,FRAUDULENT,1.0,24,ocsvm_nu0.05
+S5 new device suspicious,BORDERLINE,1.0,15,ocsvm_nu0.05
+S6 structuring splitting,FRAUDULENT,0.782608695652174,23,ocsvm_nu0.05
+S7 layering network,FRAUDULENT,0.625,48,ocsvm_nu0.05
+S8 mule pass through,FRAUDULENT,0.4,40,ocsvm_nu0.05
+S9 fraud ring hub,FRAUDULENT,0.7560975609756098,41,ocsvm_nu0.05
+S1 normal legitimate,LEGITIMATE,0.05060975609756098,1640,autoencoder
+S10 impossible travel,FRAUDULENT,1.0,16,autoencoder
+S10 impossible travel,BORDERLINE,1.0,7,autoencoder
+S11 shared device ip,FRAUDULENT,0.9523809523809523,21,autoencoder
+S11 shared device ip,BORDERLINE,1.0,15,autoencoder
+S12 mixed borderline travel,BORDERLINE,1.0,17,autoencoder
+S2 high value spike,FRAUDULENT,0.15,20,autoencoder
+S2 high value spike,BORDERLINE,0.05555555555555555,18,autoencoder
+S3 rapid burst,FRAUDULENT,0.9444444444444444,18,autoencoder
+S3 rapid burst,BORDERLINE,1.0,12,autoencoder
+S4 new beneficiary large tx,FRAUDULENT,1.0,19,autoencoder
+S4 new beneficiary large tx,BORDERLINE,1.0,6,autoencoder
+S5 new device suspicious,FRAUDULENT,1.0,24,autoencoder
+S5 new device suspicious,BORDERLINE,1.0,15,autoencoder
+S6 structuring splitting,FRAUDULENT,0.6086956521739131,23,autoencoder
+S7 layering network,FRAUDULENT,0.625,48,autoencoder
+S8 mule pass through,FRAUDULENT,0.425,40,autoencoder
+S9 fraud ring hub,FRAUDULENT,0.6829268292682927,41,autoencoder
+S1 normal legitimate,LEGITIMATE,0.02378048780487805,1640,xgboost_supervised
+S10 impossible travel,FRAUDULENT,1.0,16,xgboost_supervised
+S10 impossible travel,BORDERLINE,0.8571428571428571,7,xgboost_supervised
+S11 shared device ip,FRAUDULENT,1.0,21,xgboost_supervised
+S11 shared device ip,BORDERLINE,1.0,15,xgboost_supervised
+S12 mixed borderline travel,BORDERLINE,0.47058823529411764,17,xgboost_supervised
+S2 high value spike,FRAUDULENT,0.8,20,xgboost_supervised
+S2 high value spike,BORDERLINE,0.7222222222222222,18,xgboost_supervised
+S3 rapid burst,FRAUDULENT,0.8888888888888888,18,xgboost_supervised
+S3 rapid burst,BORDERLINE,0.6666666666666666,12,xgboost_supervised
+S4 new beneficiary large tx,FRAUDULENT,0.9473684210526315,19,xgboost_supervised
+S4 new beneficiary large tx,BORDERLINE,1.0,6,xgboost_supervised
+S5 new device suspicious,FRAUDULENT,1.0,24,xgboost_supervised
+S5 new device suspicious,BORDERLINE,1.0,15,xgboost_supervised
+S6 structuring splitting,FRAUDULENT,0.9565217391304348,23,xgboost_supervised
+S7 layering network,FRAUDULENT,0.8541666666666666,48,xgboost_supervised
+S8 mule pass through,FRAUDULENT,0.975,40,xgboost_supervised
+S9 fraud ring hub,FRAUDULENT,1.0,41,xgboost_supervised
