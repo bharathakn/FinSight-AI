@@ -4,7 +4,7 @@
 > Status legend: ✅ done · 🟡 in progress · ⬜ not started · ⛔ blocked
 
 ## Current state
-- **Current phase:** Phase 10 — Render + Vercel deploy + report (next; needs accounts, SETUP §5)
+- **Current phase:** Phase 9b — Analyze a dataset (upload / demo / attack simulator), then Phase 10 deploy
 - **Blockers:** none. Deployment target is now **Vercel + Render** (D-022). Render/Vercel accounts and the `gh` CLI are needed before Phase 10 (see `docs/SETUP.md` §5).
 - **Last updated:** 2026-11-21
 
@@ -22,6 +22,7 @@
 | 7 | Tuning + stacking + SHAP | ML | ✅ | `artifacts/models/final/` (production model, explainer, `risk_scorer.json`, `metrics.json`), `reports/final_*`, `figures/final_01…09` |
 | 8 | Services + Docker | CCT | ✅ | `src/finsight/serving/`, `services/`, `docker/` (Dockerfile, compose), `deploy/`, `reports/platform_*` |
 | 9 | Dashboard (React SPA) | All | ✅ | `frontend/` (9 pages, `vercel.json`), `reports/figures/dashboard_01…09` |
+| 9b | Analyze a dataset (upload, demo, simulator) | All | ✅ | `finsight/serving/{batch,simulate}.py`, `/analyze*`, `/analyses/*`, Analyze page (home) |
 | 10 | Render + Vercel deploy + report | CCT | ⬜ | live URLs, final report |
 
 ---
@@ -148,6 +149,18 @@
 - [x] Light + dark themes from the validated palette (D-036); responsive to phone width; every page screenshotted and checked (`reports/figures/dashboard_*.png`)
 
 **Acceptance:** `npm run build` produces a static bundle ✅ (type-checked; first load ≈ 60 KB gzipped); every page works against the local gateway ✅ (all 9 rendered with live data, light + dark + 390 px); against Render → Phase 10.
+
+## Phase 9b — Analyze a dataset (live analysis) ✅  *(user request 2026-11-21: examiners should see the system work, not only browse results)*
+Decisions: one CSV in our transaction format (template; reference data = the bank's existing accounts/customers/devices); attack simulator included; Analyze is the home page.
+- [x] Upload contract: required columns (transaction_id, timestamp, amount_inr, channel, sender/receiver_account_id), optional columns with documented defaults, optional labels (evaluation only); template + sample CSVs; limits 10 MB / 25,000 rows
+- [x] Batch pipeline `finsight/serving/batch.py`: validate → defaults → history + batch → build_master + network_features (reuse Phase 1/3 code) → impute unknown accounts → score via the backend (chunks) → summaries, suspicious groups, rules, anomaly-only cases, evaluation if labels; in-memory result store (TTL 30 min)
+- [x] Attack simulator (`finsight/serving/simulate.py`): fraud ring, mule chain, burst, structuring, shared device (± camouflage) injected into a normal background day
+- [x] API: `POST /analyze/upload` (file), `/analyze/demo`, `/analyze/simulate`, `GET /analyses/{id}`, `/analyses/{id}/transactions`, `/analyses/{id}/download`, `/analyze/template.csv`, `/analyze/sample.csv`, `/analyze/schema`
+- [x] Analyze page (new home, `frontend/src/pages/Analyze.tsx`; shareable auto-run links `/?run=demo|sample|simulate&attacks=…`): upload / demo / simulator → results (data quality, KPIs, tiers, top suspicious with reasons, suspicious account groups, rules, anomalies, evaluation, CSV download)
+- [x] Tests `tests/test_analyze.py` (8): exact feature reproduction, held-out rows, every attack ± camouflage, validation/defaults, CSV formula guard, API, remote-mode parity; memory guard (≤ 2 stored analyses, malloc_trim) → peak 436 MB at 24,000 rows
+- [ ] Report chapter (after the user's review of the page)
+
+**Acceptance:** analysing the full demo dataset reproduces the Phase 7 test metrics on its test rows ✅ (features identical; held-out PR-AUC 0.8924 without the sanctions override, 0.881 with it because of 2 synthetic-name fuzzy matches); each simulated attack type is flagged (≥ HIGH) for most injected rows ✅ (100% plain; 80–100% camouflaged, shared device 60–80%); a 10,000-row upload completes in < 15 s inside 512 MB ✅ (~3 s; 24,000 rows ~6 s, peak RSS 436 MB).
 
 ## Phase 10 — Render + Vercel Deploy + Report ⬜  *(needs GitHub / Render / Vercel accounts, see SETUP §5)*
 - [ ] `render.yaml` (Blueprint: single inprocess service + optional full 5-service variant); `frontend/vercel.json`; GitHub Actions CI (tests)

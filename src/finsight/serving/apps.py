@@ -16,12 +16,13 @@ import logging
 from functools import wraps
 from pathlib import Path
 
-from fastapi import HTTPException, Query, Request
+from fastapi import File, HTTPException, Query, Request, UploadFile   # module level: annotations are resolved by name
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 
 from finsight.serving.common import create_app, jsonable, ok
-from finsight.serving.schemas import AnomalyRequest, RowsRequest, ScoreRequest, ScoreResponse
+from finsight.serving.schemas import (AnomalyRequest, DemoRequest, NamesRequest, RowsRequest, ScoreRequest, ScoreResponse,
+                                     SimulateRequest)
 from finsight.serving.settings import Settings, get_settings
 from finsight.storage import ensure_bundle
 
@@ -155,6 +156,10 @@ def make_sanctions_app(settings: Settings | None = None, core=None):
     def screen(name: str = Query(..., min_length=1, max_length=200), threshold: float = Query(90.0, ge=50, le=100)):
         return ok(core.screen(name, threshold))
 
+    @app.post("/screen-batch", tags=["sanctions"])
+    def screen_batch(body: NamesRequest):
+        return ok({"results": core.screen_batch(body.names, body.threshold)})
+
     return app
 
 
@@ -250,6 +255,87 @@ def make_gateway_app(settings: Settings | None = None, backend=None):
         items = reports / "mining_items_v1_1.csv"
         return ok({"quality": _report("data_quality_india_v1_1.json"), "eda": eda, "sanctions": _report("sanctions_summary.json"),
                    "items": __import__("pandas").read_csv(items).to_dict(orient="records") if items.exists() else []})
+
+    # ------------------------------------------------------------ live analysis (Phase 9b)
+    import threading
+
+    from fastapi.responses import Response
+
+    from finsight.serving import batch as B
+    from finsight.serving import simulate as SIM
+
+    ref = B.Reference(root)
+    analyses = B.AnalysisStore()
+    slots = threading.BoundedSemaphore(2)            # ≤ 2 concurrent analyses: protects a 512 MB instance
+
+    def _run(df, source, request):
+        if not slots.acquire(blocking=False):
+            raise HTTPException(429, "Two analyses are already running; please retry in a few seconds.")
+        try:
+            return ok(B.run(df, ref, backend, gw.scorer, analyses, source, rid=_rid(request)))
+        finally:
+            slots.release()
+
+    def _csv(data: bytes, name: str):
+        return Response(data, media_type="text/csv", headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
+    @app.get("/analyze/schema", tags=["analyze"])
+    def analyze_schema():
+        """Columns an upload needs (required / optional with defaults / labels) and the limits."""
+        return ok(B.schema() | {"attacks": SIM.ATTACKS})
+
+    @app.get("/analyze/template.csv", tags=["analyze"])
+    def analyze_template():
+        return _csv(B.template_csv(ref), "finsight_template.csv")
+
+    @app.get("/analyze/sample.csv", tags=["analyze"])
+    def analyze_sample(rows: int = Query(1000, ge=100, le=10000)):
+        """A labelled sample of the demo dataset in upload format (try uploading it)."""
+        return _csv(B.sample_csv(ref, rows), f"finsight_sample_{rows}.csv")
+
+    @app.post("/analyze/upload", tags=["analyze"])
+    @_errors
+    def analyze_upload(request: Request, file: UploadFile = File(...)):
+        """Analyse an uploaded CSV of transactions (format: /analyze/schema; ≤ 10 MB, ≤ 25,000 rows)."""
+        data = file.file.read(B.MAX_BYTES + 1)
+        df = B.read_csv(data)
+        return _run(df, {"type": "upload", "filename": file.filename, "bytes": len(data)}, request)
+
+    @app.post("/analyze/demo", tags=["analyze"])
+    @_errors
+    def analyze_demo(body: DemoRequest, request: Request):
+        """Analyse the built-in demo dataset (all 10,000 transactions, or a stratified sample)."""
+        return _run(ref.demo(body.sample), {"type": "demo", "rows": body.sample or len(ref.history)}, request)
+
+    @app.post("/analyze/simulate", tags=["analyze"])
+    @_errors
+    def analyze_simulate(body: SimulateRequest, request: Request):
+        """Inject the chosen attacks into a normal day of payments and analyse the result."""
+        df, meta = SIM.simulate(ref, body.attacks, body.size, body.camouflage, body.background, body.seed)
+        return _run(df, {"type": "simulate", **meta}, request)
+
+    @app.get("/analyses/{aid}", tags=["analyze"])
+    @_errors
+    def analysis(aid: str):
+        return ok(analyses.get(aid).summary)
+
+    @app.get("/analyses/{aid}/transactions", tags=["analyze"])
+    @_errors
+    def analysis_rows(aid: str, tier: str | None = None, q: str | None = None, sort: str = "risk_score", desc: bool = True,
+                      limit: int = Query(50, ge=1, le=500), offset: int = Query(0, ge=0)):
+        return ok(B.rows_page(analyses.get(aid), tier, q, sort, desc, limit, offset))
+
+    @app.get("/analyses/{aid}/transactions/{tx_id}", tags=["analyze"])
+    @_errors
+    def analysis_row(aid: str, tx_id: str, request: Request):
+        """Full explanation of one analysed transaction (same output as /score-transaction)."""
+        row = B.feature_row(analyses.get(aid), tx_id)
+        return ok(gw.score(ScoreRequest(features=row), _rid(request)))
+
+    @app.get("/analyses/{aid}/download.csv", tags=["analyze"])
+    @_errors
+    def analysis_download(aid: str):
+        return _csv(B.to_csv(analyses.get(aid)), f"finsight_analysis_{aid}.csv")
 
     @app.get("/platform/benchmarks", tags=["platform"])
     def platform_benchmarks():

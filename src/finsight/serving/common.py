@@ -73,6 +73,8 @@ class JsonFormatter(logging.Formatter):
         d = {"ts": datetime.fromtimestamp(record.created, tz=timezone.utc).isoformat(timespec="milliseconds"),
              "level": record.levelname, "logger": record.name, "msg": record.getMessage()}
         d.update(getattr(record, "extra_fields", {}))
+        if record.exc_info:                       # stack traces stay in the structured log line
+            d["exc"] = self.formatException(record.exc_info)
         return json.dumps(d, default=str)
 
 

@@ -161,6 +161,30 @@ class SanctionsCore:
         c = self.screen.cache_info()
         return {"hits": c.hits, "misses": c.misses, "size": c.currsize}
 
+    def screen_batch(self, names: list[str], threshold: float = 90.0) -> dict[str, dict]:
+        """Best match per distinct name in one vectorised RapidFuzz pass (cdist, all cores) — used by batch analysis."""
+        import numpy as np
+        from rapidfuzz import fuzz, process
+
+        from finsight.sanctions.text import normalise_name
+
+        uniq = sorted({n for n in names if isinstance(n, str) and n.strip()})
+        if not uniq:
+            return {}
+        q = [normalise_name(n) for n in uniq]
+        S = process.cdist(q, self.screener._choices, scorer=fuzz.token_sort_ratio, score_cutoff=threshold,
+                          dtype=np.uint8, workers=-1)
+        best = S.argmax(axis=1)
+        out = {}
+        for i, n in enumerate(uniq):
+            sc = float(S[i, best[i]])
+            if sc >= threshold and len(q[i]) >= 3:
+                r = self.screener.entities.iloc[int(best[i])]
+                out[n] = {"hit": True, "best_score": sc, "matched_name": r["name"], "source": r["source"], "program": r["program"]}
+            else:
+                out[n] = {"hit": False, "best_score": None}
+        return out
+
     def _screen(self, name: str, threshold: float = 90.0, limit: int = 5) -> dict:
         from dataclasses import asdict
 

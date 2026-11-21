@@ -20,7 +20,7 @@ function url(path: string, params?: Params) {
   return u.toString();
 }
 
-async function request<T>(method: "GET" | "POST", path: string, opts: { params?: Params; body?: unknown; timeoutMs?: number } = {}): Promise<T> {
+async function request<T>(method: "GET" | "POST", path: string, opts: { params?: Params; body?: unknown; form?: FormData; timeoutMs?: number } = {}): Promise<T> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), opts.timeoutMs ?? 45000);
   try {
@@ -28,7 +28,7 @@ async function request<T>(method: "GET" | "POST", path: string, opts: { params?:
       method,
       signal: ctrl.signal,
       headers: opts.body ? { "Content-Type": "application/json" } : undefined,
-      body: opts.body ? JSON.stringify(opts.body) : undefined,
+      body: opts.form ?? (opts.body ? JSON.stringify(opts.body) : undefined),
     });
     const rid = r.headers.get("x-request-id") ?? undefined;
     if (!r.ok) {
@@ -51,7 +51,13 @@ async function request<T>(method: "GET" | "POST", path: string, opts: { params?:
 
 export const api = {
   get: <T,>(path: string, params?: Params, timeoutMs?: number) => request<T>("GET", path, { params, timeoutMs }),
-  post: <T,>(path: string, body: unknown) => request<T>("POST", path, { body }),
+  post: <T,>(path: string, body: unknown, timeoutMs?: number) => request<T>("POST", path, { body, timeoutMs }),
+  upload: <T,>(path: string, file: File, timeoutMs = 120000) => {
+    const form = new FormData();
+    form.append("file", file);
+    return request<T>("POST", path, { form, timeoutMs });
+  },
+  url: (path: string, params?: Params) => url(path, params),
 };
 
 /** Fetch on mount / when `deps` change. While refetching, the previous data stays (rendered dimmed). */

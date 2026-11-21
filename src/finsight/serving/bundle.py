@@ -56,6 +56,8 @@ REPORTS = ["ml_experiment_results.csv", "ml_paired_tests.csv", "final_model_comp
 OPTIONAL_REPORTS = ["platform_summary.json"]          # measurements; present once Phase 8 has been measured
 LIBS = ["scikit-learn", "xgboost-cpu", "imbalanced-learn", "onnxruntime", "pandas", "numpy", "pyarrow"]
 STORE_DROP = ["alert_id", "is_flagged_alert", "scenario_id"]        # label proxies are never served
+REFERENCE_FILES = ["transactions_features.csv", "transactions_targets.csv", "accounts.csv", "customers.csv",
+                   "devices.csv", "beneficiaries.csv"]
 
 
 def sha256(path: Path) -> str:
@@ -107,8 +109,16 @@ def build(out: Path = CURRENT) -> dict:
         (out / dst).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(config.ARTIFACTS_DIR / src, out / dst)
     (out / "data").mkdir()
+    ref = out / "data" / "reference"                       # bank history + reference tables for live analysis (Phase 9b)
+    ref.mkdir()
+    for name in REFERENCE_FILES:
+        shutil.copy2(config.INDIA_V1_1_DIR / name, ref / name)
     store = transaction_store()
     store.to_parquet(out / "data" / "transactions.parquet", index=False)
+    from finsight.ml.splits import stratified_split       # the Phase 5–7 held-out test rows (for honest live evaluation)
+
+    sp = stratified_split(store)
+    (out / "data" / "test_ids.json").write_text(json.dumps(store["transaction_id"].iloc[sp.test].tolist()))
     emb, var = embedding(store)
     emb.to_parquet(out / "data" / "embedding.parquet", index=False)
     (out / "reports").mkdir()

@@ -66,6 +66,9 @@ class InProcessBackend:
     def sanctions_screen(self, name, threshold=90.0, rid=None):
         return jsonable(self.sanctions.screen(name, threshold))
 
+    def sanctions_screen_batch(self, names, threshold=90.0, rid=None):
+        return jsonable(self.sanctions.screen_batch(names, threshold))
+
     def status(self, rid=None):
         return {n: {"status": "ok", "mode": "inprocess", **jsonable(getattr(self, n).health())}
                 for n in ("ml", "mining", "graph", "sanctions")}
@@ -131,6 +134,9 @@ class RemoteBackend:
 
     def sanctions_screen(self, name, threshold=90.0, rid=None):
         return self._call("sanctions", "GET", "/screen", rid, params={"name": name, "threshold": threshold})
+
+    def sanctions_screen_batch(self, names, threshold=90.0, rid=None):
+        return self._call("sanctions", "POST", "/screen-batch", rid, json={"names": list(names), "threshold": threshold})["results"]
 
     def status(self, rid=None):
         out = {}

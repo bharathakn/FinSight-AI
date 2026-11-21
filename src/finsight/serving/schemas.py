@@ -68,3 +68,22 @@ class RowsRequest(BaseModel):
     """Internal service-to-service payload: feature rows (JSON objects)."""
     rows: list[dict[str, Any]] = Field(min_length=1, max_length=1000)
     explain_top: int = Field(6, ge=0, le=20)
+
+
+class NamesRequest(BaseModel):
+    """Internal: distinct names to screen in one pass (batch analysis)."""
+    names: list[str] = Field(max_length=30000)
+    threshold: float = Field(90.0, ge=50, le=100)
+
+
+class DemoRequest(BaseModel):
+    sample: int | None = Field(None, ge=100, le=10000, description="Analyse a stratified sample of this many rows (default: all 10,000).")
+
+
+class SimulateRequest(BaseModel):
+    attacks: list[str] = Field(min_length=1, max_length=5, examples=[["fraud_ring", "mule_chain"]],
+                               description="Any of fraud_ring, mule_chain, burst, structuring, shared_device.")
+    size: int = Field(10, ge=3, le=40, description="Intensity: senders in the ring, payments in the burst, …")
+    camouflage: bool = Field(False, description="Make each payment look normal on behaviour (only the network gives it away).")
+    background: int = Field(1500, ge=200, le=5000, description="Normal payments in the simulated day.")
+    seed: int | None = Field(None, description="Random seed (fixed = reproducible attack).")

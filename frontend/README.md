@@ -11,7 +11,8 @@ make dashboard-build       # type-check + production build → frontend/dist
 
 | Page | Route | API endpoints |
 |---|---|---|
-| Executive overview | `/` | `/overview`, `/models/compare` |
+| **Analyze transactions** (home) | `/` | `/analyze/schema`, `/analyze/upload`, `/analyze/demo`, `/analyze/simulate`, `/analyses/{id}/…` |
+| Executive overview | `/overview` | `/overview`, `/models/compare` |
 | Data quality | `/data-quality` | `/data-quality` |
 | Transaction explorer | `/transactions` | `/transactions`, `/transactions/{id}` |
 | Pattern mining lab | `/patterns` | `/patterns`, `/patterns/benchmark` |

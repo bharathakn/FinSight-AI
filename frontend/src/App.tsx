@@ -3,6 +3,7 @@ import { NavLink, Route, Routes } from "react-router-dom";
 import { API_BASE } from "./api";
 import { Loading, WakeGate } from "./components/ui";
 
+const Analyze = lazy(() => import("./pages/Analyze"));
 const Overview = lazy(() => import("./pages/Overview"));
 const DataQuality = lazy(() => import("./pages/DataQuality"));
 const Transactions = lazy(() => import("./pages/Transactions"));
@@ -14,7 +15,8 @@ const RiskScorer = lazy(() => import("./pages/RiskScorer"));
 const Platform = lazy(() => import("./pages/Platform"));
 
 const NAV: { group: string; items: [string, string, string][] }[] = [
-  { group: "Overview", items: [["/", "Executive overview", "◧"]] },
+  { group: "Analyze", items: [["/", "Analyze transactions", "▶"]] },
+  { group: "Demo dataset insights", items: [["/overview", "Executive overview", "◧"]] },
   { group: "Data (DMW)", items: [["/data-quality", "Data quality", "▤"], ["/transactions", "Transaction explorer", "☰"], ["/patterns", "Pattern mining lab", "⋈"]] },
   { group: "Models (ML)", items: [["/ml", "ML experiments lab", "◭"], ["/clusters", "Clustering & anomaly", "⁘"], ["/network", "Network explorer", "⟡"], ["/score", "Risk scorer", "◎"]] },
   { group: "Cloud (CCT)", items: [["/platform", "Platform", "▦"]] },
@@ -63,7 +65,8 @@ export default function App() {
           <main className="main">
             <Suspense fallback={<Loading what="Loading page" />}>
               <Routes>
-                <Route path="/" element={<Overview />} />
+                <Route path="/" element={<Analyze />} />
+                <Route path="/overview" element={<Overview />} />
                 <Route path="/data-quality" element={<DataQuality />} />
                 <Route path="/transactions" element={<Transactions />} />
                 <Route path="/patterns" element={<Patterns />} />
