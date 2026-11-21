@@ -1,0 +1,19 @@
+scenario,risk_label,flag_rate,n
+S1 normal legitimate,LEGITIMATE,0.015853658536585366,1640
+S10 impossible travel,FRAUDULENT,1.0,16
+S10 impossible travel,BORDERLINE,0.7142857142857143,7
+S11 shared device ip,FRAUDULENT,1.0,21
+S11 shared device ip,BORDERLINE,1.0,15
+S12 mixed borderline travel,BORDERLINE,0.29411764705882354,17
+S2 high value spike,FRAUDULENT,0.8,20
+S2 high value spike,BORDERLINE,0.6666666666666666,18
+S3 rapid burst,FRAUDULENT,0.8888888888888888,18
+S3 rapid burst,BORDERLINE,0.6666666666666666,12
+S4 new beneficiary large tx,FRAUDULENT,1.0,19
+S4 new beneficiary large tx,BORDERLINE,1.0,6
+S5 new device suspicious,FRAUDULENT,1.0,24
+S5 new device suspicious,BORDERLINE,1.0,15
+S6 structuring splitting,FRAUDULENT,0.9565217391304348,23
+S7 layering network,FRAUDULENT,0.8333333333333334,48
+S8 mule pass through,FRAUDULENT,1.0,40
+S9 fraud ring hub,FRAUDULENT,1.0,41

@@ -166,7 +166,7 @@ flowchart TD
 ```
 
 **Scoring (inside the gateway):**
-`risk = 100 × (w1·P(fraud)_stacking + w2·anomaly_pct + w3·graph_risk)`. Weights are chosen on the validation set (grid over the simplex, maximising PR-AUC). Overrides: sanctions match ≥ 90 → **CRITICAL**; PEP customer → floor at **MEDIUM**; structuring rule fired → +10. Tiers: LOW < 30 ≤ MEDIUM < 60 ≤ HIGH < 85 ≤ CRITICAL. Tier cut-offs are chosen from validation precision/recall.
+`risk = 100 × (w1·P(fraud)_production + w2·anomaly_pct + w3·graph_risk)`. `anomaly_pct` = autoencoder reconstruction-error percentile among legit validation rows (Phase 6); `graph_risk` = training-split fraud rate of the strongest network red flag that fires (D-030). Weights are chosen on the validation set (grid over the simplex, maximising PR-AUC). Overrides: sanctions match ≥ 90 → **CRITICAL**; PEP customer → floor at **MEDIUM**; structuring rule (NEAR_THRESHOLD ∧ BURST_SENDER) → +10. Tier cut-offs from validation (D-032): MEDIUM = 98% recall review band, HIGH = max-F1 alert, CRITICAL = 95% precision (fitted values 5 / 28 / 74).
 
 ---
 
@@ -332,12 +332,13 @@ Run on **v1.1** (primary). Exp C is also run on **v1.0** as a control: network f
 | Random Forest | 0.650 | 0.766 | 0.838 | 0.976 | 0.799 |
 | XGBoost | 0.690 | 0.829 | 0.875 | 0.980 | 0.801 |
 | MLP Neural Net | 0.551 | 0.681 | 0.798 | 0.962 | 0.734 |
-| **Stacking Ensemble** | — | — | Phase 7 | Phase 7 | Phase 7 |
+| **Stacking Ensemble** (tuned, Phase 7) | — | — | 0.889 | 0.982 | 0.825 |
+| **XGBoost tuned + isotonic (production, Phase 7)** | — | — | **0.885** | **0.982** | **0.827** |
 
 Paired 5×2 CV: C > B significant for 5/6 models on v1.1 (p < 0.001), 0/6 on v1.0. See `notebooks/04_supervised_ml.ipynb`.
 
 ### 7.4 Module 2 — Clustering
-- K-Means on Exp B (scaled), K = 2..8 → Elbow + Silhouette + Davies–Bouldin
+- K-Means on Exp B and Exp C (scaled), K = 2..8 → Elbow + Silhouette + Davies–Bouldin; K = lowest DB on the silhouette plateau (D-026)
 - DBSCAN with k-distance plot for ε; noise points vs fraud labels
 - Post-hoc: fraud % per cluster, scenario composition per cluster, Adjusted Rand Index vs risk_label
 - 2-D PCA + t-SNE plots coloured by cluster vs by label
@@ -346,18 +347,32 @@ Paired 5×2 CV: C > B significant for 5/6 models on v1.1 (p < 0.001), 0/6 on v1.
 
 | Method | Trained on | Threshold | Output |
 |---|---|---|---|
-| Isolation Forest | India **legit training rows** (Exp B + C) | 95th / 99th pct of training score | anomaly score |
+| Isolation Forest | India **legit training rows** (Exp B + C) | 95th / 99th pct of **legit validation** scores (D-025) | anomaly score |
 | One-class SVM (RBF) | India legit training rows (scaled) | ν ∈ {0.01, 0.05} | inlier/outlier + decision score |
-| Autoencoder (PyTorch → ONNX) | India legit training rows | 95th pct reconstruction error | reconstruction error |
+| Autoencoder (PyTorch → ONNX) | India legit training rows | 95th / 99th pct of legit validation reconstruction error | reconstruction error |
 | **PaySim IF (scale track)** | PaySim 6.36M (Polars), TRANSFER/CASH_OUT | pct threshold | evaluated vs PaySim `isFraud` |
 
 Autoencoder: input → 32 → 16 → 8 → 16 → 32 → input, MSE, early stopping on a legit validation set. Compare detectors by PR-AUC and recall@1% FPR on the India test set, broken down per scenario.
 
+**Phase 6 results (v1.1 test set, `notebooks/05_unsupervised_ml.ipynb`):**
+
+| | PR-AUC | ROC-AUC | Recall @1% FPR | P / R at p95 | BORDERLINE flagged |
+|---|---|---|---|---|---|
+| Isolation Forest (Exp C) | 0.358 | 0.778 | 0.08 | 0.41 / 0.29 | 20% |
+| OC-SVM ν = 0.05 (Exp C) | **0.554** | **0.874** | 0.04 | 0.54 / 0.72 | 80% |
+| Autoencoder (Exp C, ONNX) | 0.543 | 0.872 | 0.08 | 0.55 / 0.70 | 81% |
+| *XGBoost supervised (Phase 5)* | *0.875* | *0.980* | — | *0.70 / 0.94* | — |
+| PaySim IF, raw → + balance-error (2.77 M rows) | 0.341 → 0.488 | 0.892 → 0.953 | 0.52 | — | — |
+
+Clustering: K-Means K = 4 on Exp C (silhouette 0.158, ARI 0.47 vs risk_label; Exp B K = 3, ARI 0.30). Clusters: normal (3% fraud), velocity bursts (52%), receiver fan-in hubs (59%), unusual-amount same-community flows (40%). DBSCAN noise (1.4% of rows) is 55% fraud. Detectors recover 4 of the 16 test frauds XGBoost misses; ONNX parity 4.8e-7.
+
 ### 7.6 Module 4 — Tuning, CV, Learning Curves
 5-fold stratified CV for all searches; learning curves (train vs CV score over training size) for the best model and for DT (to show variance); bias–variance discussion.
 
-### 7.7 Module 5 — Stacking Ensemble (Production Model)
+### 7.7 Module 5 — Stacking Ensemble + Calibration (production model chosen on validation)
 Base learners RF + XGB + MLP (tuned) → Logistic Regression meta-learner on out-of-fold probabilities (`StackingClassifier(cv=5)`), then `CalibratedClassifierCV` (isotonic) so scores are real probabilities for the 0–100 risk score.
+
+**Phase 7 results (v1.1, `notebooks/06_tuning_ensemble.ipynb`):** tuning (5-fold CV on train, PR-AUC) DT 0.792 → 0.850, KNN 0.789 → 0.817, RF 0.881 → 0.906, XGB 0.895 → 0.909 (all paired p < 0.01), MLP 0.851 → 0.862 (n.s.). The stack did **not** beat tuned XGBoost (val 0.892 vs 0.898), so the production model is the isotonic-calibrated tuned XGBoost (D-031): test PR-AUC 0.885, ROC-AUC 0.982, F1 0.827 (precision 0.73, recall 0.94); ECE on validation 0.014 → 0.005. Native `pred_contribs` = SHAP exactly. Artifact 0.43 MB (D-029). Risk score weights 0.90 / 0.05 / 0.05 (model / anomaly / graph), test PR-AUC 0.892 (D-032).
 
 ### 7.8 Module 6 — Graph Features (computed in Phase 3, used by Exp C)
 Point-in-time (each feature uses only edges **before** the transaction): sender in/out degree (7d), receiver distinct senders (24h, 7d), sender tx count (10 min, 1h), seconds since sender's last inflow, forward ratio (amount / last inflow), pass-through flag (≥ 80% forwarded within 30 min), device distinct accounts (to date), chain depth (length of the recent pass-through path).
@@ -377,7 +392,7 @@ Global SHAP bar + beeswarm (XGB), local waterfall per transaction (served via `/
 |---|---|---|
 | Dashboard (React + Vite, static SPA) | **Vercel** (Hobby, free) | Global CDN for static assets, Git-push deploys, preview deployments per pull request. Streamlit can't run on Vercel (it needs a long-lived WebSocket server), so the dashboard is a static React app that calls the API. |
 | FastAPI services (Docker) | **Render** web services (free) | Native Docker deploys from GitHub, HTTPS by default, IaC via `render.yaml` Blueprint. |
-| Model artifacts (~26 MB) | **GitHub Releases** ("model registry") → baked into the image at build | Render's free filesystem is ephemeral, so artifacts are versioned release assets downloaded during `docker build`. The same `fsspec` storage layer can point to any S3-compatible bucket (optional Supabase Storage / Cloudflare R2). |
+| Model artifacts (bundle: 4.4 MB tar.gz, 27 files, sha256 manifest; Phase 8) | **GitHub Releases** ("model registry") → baked into the image at build | Render's free filesystem is ephemeral, so artifacts are versioned release assets downloaded during `docker build`. The same `fsspec` storage layer can point to any S3-compatible bucket (optional Supabase Storage / Cloudflare R2). |
 | Training pipeline (batch) | Local machine (`make pipeline`) → `make publish-artifacts` | Needs the 1.8 GB dataset, which isn't in Git; Render cron jobs aren't free. |
 | CI | GitHub Actions | Lint + tests on every push; Render and Vercel auto-deploy from `main`. |
 
@@ -393,6 +408,20 @@ Global SHAP bar + beeswarm (XGB), local waterfall per transaction (served via `/
 **Two deployment modes from the same code (`FINSIGHT_SERVICE_MODE`)**
 - `remote` (microservices): gateway → ml / mining / graph / sanctions over HTTP. Used in **Docker Compose locally** and in the **Render "full" Blueprint** (5 web services). This is the CCT microservices demonstration.
 - `inprocess` (modular monolith): the gateway imports the four service modules directly, so **one Render web service** has one cold start. This is the default free-tier deployment.
+
+**Why this is cloud computing (for the CCT report).** Cloud is defined by the service model, not by the vendor. Against the NIST SP 800-145 characteristics:
+
+| NIST characteristic | FinSight implementation |
+|---|---|
+| On-demand self-service | Deploys triggered by a Git push or the `render.yaml` Blueprint; no hardware or tickets |
+| Broad network access | Public HTTPS API; dashboard from Vercel's global edge CDN |
+| Resource pooling | Multi-tenant container hosts (Render, Cloud Run) and edge network (Vercel) |
+| Rapid elasticity | Scale-to-zero after idle, wake on request; horizontal scaling (`--scale`, Cloud Run autoscaling) |
+| Measured service | Metered instance-hours / vCPU-seconds / requests; free-tier quotas |
+
+Service models: Render and Cloud Run = container PaaS (CaaS), Vercel = frontend PaaS + CDN (+ FaaS available), GitHub Actions = CI/CD as a service, GitHub Releases = artifact storage, the FinSight API = SaaS. Vercel and Render are managed layers on top of hyperscaler infrastructure.
+
+**Portability experiment: Render vs Google Cloud Run (D-028).** The same backend Docker image (inprocess mode) is also deployed to **Google Cloud Run** (region `asia-south1`, Mumbai; `min-instances=0`, `max-instances=2`) and pushed through **Artifact Registry**. Both are measured with the same script: cold-start time, warm p50/p95 latency, image size, memory, and cost within the free tiers. "One image, two clouds" demonstrates container portability and vendor-lock-in avoidance, and adds a hyperscaler to the project. Render + Vercel stay the primary (card-free) deployment; Cloud Run is the comparison target and needs a GCP billing account (SETUP §5.1c).
 
 ### 8.1 Services (authoritative table)
 
@@ -440,9 +469,13 @@ All services are stateless and load artifacts at startup from `FINSIGHT_ARTIFACT
 | `/sanctions-check` | GET `?name=` | matches + scores | DMW |
 | `/models/compare` | GET | Exp A/B/C × models matrix | ML |
 | `/transactions/{tx_id}` | GET | full merged profile | DMW |
+| `/transactions`, `/overview` | GET | paginated/filterable transaction list; dataset KPIs for the dashboard | DMW |
+| `/platform/status` | GET | gateway metrics + health/latency/RSS of each downstream service | CCT |
 | `/health`, `/metrics` | GET | service status, latency/request stats | CCT |
 
 Targets: p95 < 200 ms for `/score-transaction` when warm; cold start measured and reported separately.
+
+**Phase 8 results (Docker Compose, one laptop; `reports/platform_summary.json`, `figures/platform_01_phase8.png`):** warm single-client `/score-transaction` p50/p95 = 20/27 ms (remote, 5 containers) and 21/28 ms (inprocess, 1 container); process RSS: monolith 323 MB, ml-service 308 MB, other services 158–178 MB (Render free = 512 MB). Load test (30 users): 80 req/s with 1 ml replica (p50 160 ms) → 87 req/s with 3 (p50 100 ms), 0 errors; 10 users: p95 77 ms. Profiling cut in-process latency 138 → 21 ms p50 (D-034); the load test exposed sanctions screening as the CPU bottleneck (→ LRU cache) and replica pinning by pooled connections (→ short keep-alive) (D-035). Scoring input modes: stored transaction / what-if overrides / full feature row (D-033).
 
 ### 8.4 Deployment Plan
 
@@ -465,8 +498,8 @@ flowchart LR
 | **RQ2** | What recurring behaviour combinations does association-rule mining discover, and how do Apriori and FP-Growth compare in runtime/memory? | DMW |
 | **RQ3** | Do behavioural (Exp B) and network (Exp C) features measurably improve classification over raw transaction features (Exp A) — and do network features help *only* when real network structure exists (v1.0 vs v1.1)? | ML |
 | **RQ4** | Which classifier performs best, with which hyperparameters, and does SMOTE beat class weighting? | ML |
-| **RQ5** | Can unsupervised clustering recover risk groupings without labels? | ML |
-| **RQ6** | How well do IF, OC-SVM and an Autoencoder trained only on legitimate data detect fraud, and per scenario? | ML |
+| **RQ5** | Can unsupervised clustering recover risk groupings without labels? *(answered in Phase 6: partly; ARI 0.47, 3 interpretable risk clusters)* | ML |
+| **RQ6** | How well do IF, OC-SVM and an Autoencoder trained only on legitimate data detect fraud, and per scenario? *(answered in Phase 6: PR-AUC ≈ 0.55 vs 0.875 supervised; anomalous ≠ fraudulent)* | ML |
 | **RQ7** | Which scenarios (and BORDERLINE cases) are hardest for the models? | ML + DMW |
 | **RQ8** | How does a containerised microservice architecture on serverless infrastructure support independent scaling, deployment and cost (scale-to-zero vs cold start)? | CCT |
 
@@ -496,43 +529,43 @@ flowchart LR
 - [x] Write `custom_india_v1_1/` + `injection_log.csv` + metadata
 - [x] Re-run the audit → validate signal per scenario and the no-giveaway check
 
-### Phase 2 — EDA *(DMW + ML)*
-- [ ] Amount distributions by label (log scale), fraud rate by channel/hour/day, India state map
-- [ ] Correlation matrix, single-feature AUC table (the leakage scan)
-- [ ] Scenario breakdown, BORDERLINE vs FRAUDULENT comparison
+### Phase 2 — EDA *(DMW + ML)* ✅
+- [x] Amount distributions by label (log scale), fraud rate by channel/hour/day, India state map
+- [x] Correlation matrix, single-feature AUC table (the leakage scan)
+- [x] Scenario breakdown, BORDERLINE vs FRAUDULENT comparison
 
 ### Phase 3 — Graph Features *(ML + DMW)* — features ✅
 - [x] `finsight/graph/network_features.py` — point-in-time + global features (Section 7.8)
 - [ ] Louvain communities; ring/hub detection; graph state artifact for graph-service
 
-### Phase 4 — Association Rule Mining *(DMW)*
-- [ ] `finsight/mining/discretiser.py` (Section 6.4) → items
-- [ ] `finsight/mining/association.py` — Apriori, FP-Growth, FP-Max, closed; benchmark harness
-- [ ] Top-10 rules → FRAUDULENT / BORDERLINE; fraud-subset rules; PaySim scale run
+### Phase 4 — Association Rule Mining *(DMW)* ✅
+- [x] `finsight/mining/discretiser.py` (Section 6.4) → items
+- [x] `finsight/mining/association.py` — Apriori, FP-Growth, FP-Max, closed; benchmark harness
+- [x] Top-10 rules → FRAUDULENT / BORDERLINE; fraud-subset rules; PaySim scale run
 
-### Phase 5 — Supervised *(ML)*
-- [ ] `finsight/ml/feature_sets.py` (Exp A/B/C + leakage blacklist assertion)
-- [ ] `finsight/ml/classifiers.py` + `evaluator.py` — 6 models × 3 sets × {v1.0, v1.1}; SMOTE vs class_weight
-- [ ] Per-scenario recall, BORDERLINE analysis, DT visualisation (depth ≤ 5), temporal holdout
+### Phase 5 — Supervised *(ML)* ✅
+- [x] `finsight/ml/feature_sets.py` (Exp A/B/C + leakage blacklist assertion)
+- [x] `finsight/ml/classifiers.py` + `evaluator.py` — 6 models × 3 sets × {v1.0, v1.1}; SMOTE vs class_weight
+- [x] Per-scenario recall, BORDERLINE analysis, DT visualisation (depth ≤ 5), temporal holdout
 
-### Phase 6 — Unsupervised + Anomaly *(ML)*
-- [ ] `finsight/ml/clustering.py` — K-Means (K=2..8), DBSCAN, PCA/t-SNE
-- [ ] `finsight/ml/anomaly.py` — IF, OC-SVM, AE (PyTorch → ONNX); PaySim IF scale track
+### Phase 6 — Unsupervised + Anomaly *(ML)* ✅
+- [x] `finsight/ml/clustering.py` — K-Means (K=2..8), DBSCAN, PCA/t-SNE
+- [x] `finsight/ml/anomaly.py` — IF, OC-SVM, AE (PyTorch → ONNX); PaySim IF scale track
 
-### Phase 7 — Tuning + Ensemble + SHAP *(ML)*
-- [ ] `finsight/ml/tuner.py` — Grid/Randomized search, 5-fold stratified CV, learning curves
-- [ ] `finsight/ml/ensemble.py` — Stacking + calibration; threshold + tier selection on validation
-- [ ] `finsight/ml/explainer.py` — SHAP global/local; save all artifacts + `metrics.json`
+### Phase 7 — Tuning + Ensemble + SHAP *(ML)* ✅
+- [x] `finsight/ml/tuner.py` — Grid/Randomized search, 5-fold stratified CV, learning curves
+- [x] `finsight/ml/ensemble.py` — Stacking + calibration; threshold + tier selection on validation
+- [x] `finsight/ml/explain.py` + `finsight/scoring/risk_scorer.py` — SHAP global/local; save all artifacts + `metrics.json`
 
-### Phase 8 — Services + Docker *(CCT)*
-- [ ] `finsight/storage.py` (fsspec: local / S3-compatible) + `make publish-artifacts` (GitHub Release)
-- [ ] `services/{gateway,ml,mining,graph,sanctions}/app.py` — FastAPI + Pydantic
-- [ ] `finsight/scoring/risk_scorer.py` — weights, overrides, tiers
-- [ ] Dockerfiles (multi-stage, slim, non-root) + `docker-compose.yml`; `FINSIGHT_SERVICE_MODE` inprocess/remote; `X-Internal-Key` middleware; CORS
-- [ ] pytest API tests; locust load test; `--scale ml-service=3` demo; latency < 200 ms check
+### Phase 8 — Services + Docker *(CCT)* ✅
+- [x] `finsight/storage.py` (local / https / fsspec) + `finsight/serving/bundle.py` + `make publish-artifacts` (GitHub Release)
+- [x] `services/{gateway,ml,mining,graph,sanctions}/main.py` (entry points) → `finsight/serving/apps.py` — FastAPI + Pydantic
+- [x] `finsight/scoring/risk_scorer.py` — weights, overrides, tiers (Phase 7) used by the gateway
+- [x] `docker/Dockerfile` (one multi-stage file, build args SERVICE/REQS, slim, non-root) + `docker/docker-compose.yml`; `FINSIGHT_SERVICE_MODE` inprocess/remote; `X-Internal-Key` middleware; CORS
+- [x] pytest API tests; locust load test; `--scale ml-service=3` demo; latency < 200 ms check (p95 27 ms)
 
-### Phase 9 — Dashboard *(All)*
-- [ ] Pages: Overview · Data Quality · Transaction Explorer · Pattern Mining Lab · ML Lab · Clustering & Anomaly · Network Explorer · Risk Scorer · Platform (CCT metrics)
+### Phase 9 — Dashboard *(All)* ✅
+- [x] Pages: Overview · Data Quality · Transaction Explorer · Pattern Mining Lab · ML Lab · Clustering & Anomaly · Network Explorer · Risk Scorer · Platform (CCT metrics) — `frontend/`, React + Vite + TS, Plotly; light/dark; wake gate (D-036)
 
 ### Phase 10 — Render + Vercel Deployment + Report *(CCT)*
 - [ ] `render.yaml` Blueprint (inprocess single service + full 5-service variant); `vercel.json`; GitHub Actions CI

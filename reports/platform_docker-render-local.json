@@ -1,0 +1,24 @@
+{
+  "label": "docker-render-local",
+  "url": "http://localhost:10000",
+  "measured_utc": "2026-11-21T15:19:57Z",
+  "warm": {
+    "n": 200,
+    "client_p50_ms": 16.4,
+    "client_p95_ms": 18.69,
+    "client_p99_ms": 20.51,
+    "client_mean_ms": 14.5,
+    "server_p50_ms": 14.8,
+    "server_p95_ms": 17.2,
+    "tiers": {
+      "LOW": 134,
+      "HIGH": 15,
+      "MEDIUM": 33,
+      "CRITICAL": 18
+    }
+  },
+  "mode": "inprocess",
+  "rss_mb": {
+    "gateway": 324.1
+  }
+}

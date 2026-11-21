@@ -87,6 +87,27 @@ paysc = pd.read_csv(REP / "mining_paysim_scaling.csv")
 rules11 = pd.read_csv(REP / "association_rules_v1_1.csv")
 ep = pd.read_csv(REP / "emerging_patterns_v1_1.csv")
 items = pd.read_csv(REP / "mining_items_v1_1.csv")
+us = J("unsupervised_summary.json")
+anr = pd.read_csv(REP / "anomaly_results.csv")
+uclu = pd.read_csv(REP / "unsup_clusters.csv")
+ascen = pd.read_csv(REP / "anomaly_per_scenario.csv")
+ucs, uan, ups, upar = us["clustering"], us["anomaly"], us["paysim_if"], us["onnx_parity"]
+DET = {"isolation_forest": "Isolation Forest", "ocsvm_nu0.01": "One-class SVM (ν = 0.01)",
+       "ocsvm_nu0.05": "One-class SVM (ν = 0.05)", "autoencoder": "Autoencoder"}
+fs7 = J("final_summary.json")
+ftune = pd.read_csv(REP / "final_tuning_summary.csv")
+fcomp = pd.read_csv(REP / "final_model_comparison.csv").set_index("model")
+ftiers = pd.read_csv(REP / "final_risk_tiers.csv").set_index("risk_label")
+FT = fs7["test"]
+RSC = fs7["risk_scorer"]
+N_TESTS = 60
+plat = J("platform_summary.json")
+PW = {k: v["warm"] for k, v in plat["warm"].items()}
+PL = plat["load"]
+IMG = plat["images_mb"]
+LBL7 = {"decision_tree": "Decision Tree", "knn": "KNN", "random_forest": "Random Forest", "xgboost": "XGBoost", "mlp": "MLP",
+        "stack_uncalibrated": "Stacking (RF + XGB + MLP → LR)", "xgboost_calibrated": "XGBoost tuned + isotonic (production)",
+        "stack_calibrated": "Stacking + isotonic"}
 
 MODEL = {"decision_tree": "Decision Tree", "naive_bayes": "Naive Bayes", "knn": "KNN",
          "random_forest": "Random Forest", "xgboost": "XGBoost", "mlp": "MLP"}
@@ -204,6 +225,97 @@ def sweep_table():
                  ["Fuzzy threshold", "Alerts on 1,200 customers", "False-positive rate"], "num")
 
 
+def tuning_table():
+    rows = []
+    for r in ftune.sort_values("tuned_cv_pr_auc", ascending=False).itertuples():
+        bp = json.loads(r.best_params)
+        short = ", ".join(f"{k}={(round(v, 3) if isinstance(v, float) else v)}" for k, v in bp.items())
+        rows.append([LBL7[r.model], f"{r.search} ({r.configs_tried})", f3(r.default_cv_pr_auc), f3(r.tuned_cv_pr_auc),
+                     f"{r.paired_mean_diff:+.3f}", ("< 0.01" if r.paired_t_pvalue < 0.01 else f"{r.paired_t_pvalue:.2f}"), short])
+    return table(rows, ["Model", "Search (configs)", "Default CV", "Tuned CV", "Gain", "p (paired)", "Best hyperparameters"], "num small",
+                 widths=["13%", "11%", "9%", "9%", "7%", "8%", "43%"])
+
+
+def final_table():
+    order = ["xgboost_calibrated", "xgboost", "stack_uncalibrated", "random_forest", "stack_calibrated", "decision_tree", "mlp", "knn"]
+    rows = [[LBL7[k], f3(fcomp.loc[k, "val_pr_auc"]), f3(fcomp.loc[k, "test_pr_auc"]), f3(fcomp.loc[k, "test_roc_auc"]),
+             f3(fcomp.loc[k, "test_f1"]), f"{fcomp.loc[k, 'test_precision']:.2f}", f"{fcomp.loc[k, 'test_recall']:.2f}"] for k in order]
+    rows.append(["Phase 5 XGBoost (defaults, SMOTE)", "—", f3(best["test_pr_auc"]), f3(best["test_roc_auc"]), f3(best["test_f1"]),
+                 f"{best['test_precision']:.2f}", f"{best['test_recall']:.2f}"])
+    return table(rows, ["Model (v1.1, Exp C)", "Val PR-AUC", "Test PR-AUC", "Test ROC-AUC", "Test F1", "Precision", "Recall"], "num small",
+                 widths=["34%", "11%", "11%", "11%", "11%", "11%", "11%"])
+
+
+def tier_table():
+    rows = []
+    for lab in ("LEGITIMATE", "FRAUDULENT", "BORDERLINE"):
+        r = ftiers.loc[lab]
+        n = int(sum(r[f"{t}_n"] for t in ("LOW", "MEDIUM", "HIGH", "CRITICAL")))
+        rows.append([lab.title(), f"{n:,}"] + [pct(r[f"{t}_share"], 0) for t in ("LOW", "MEDIUM", "HIGH", "CRITICAL")])
+    return table(rows, ["True label (test)", "Rows", "LOW", "MEDIUM", "HIGH", "CRITICAL"], "num")
+
+
+def cluster_summary_table():
+    rows = []
+    for e in ("B", "C"):
+        c = ucs[e]
+        rows.append([f"Exp {e} ({c['n_features_after_encoding']} encoded columns)", c["k"], f3(c["silhouette"]), f"{c['davies_bouldin']:.2f}",
+                     f3(c["kmeans_vs_label"]["ari"]), f3(c["kmeans_vs_label"]["nmi"]),
+                     f"{pct(c['flag_high_fraud_clusters']['precision'], 0)} / {pct(c['flag_high_fraud_clusters']['recall'], 0)}",
+                     f"{pct(c['dbscan']['noise_rate'])} ({pct(c['dbscan']['fraud_rate_noise'], 0)} fraud)"])
+    return table(rows, ["Feature space", "K", "Silhouette", "Davies–Bouldin", "ARI", "NMI", "Risk clusters P / R", "DBSCAN noise"], "num small")
+
+
+NICE = {"sender_tx_10m": "sender tx in 10 min", "sender_tx_1h": "sender tx in 1 h", "time_since_last_tx_sec": "time since last tx",
+        "sender_tx_24h": "sender tx in 24 h", "receiver_tx_in_24h": "receiver tx in 24 h",
+        "receiver_distinct_senders_24h": "receiver distinct senders 24 h", "receiver_pagerank": "receiver PageRank",
+        "receiver_distinct_senders_7d": "receiver distinct senders 7 d", "amount_ratio_vs_30d_avg": "amount vs 30-day avg",
+        "log_amount": "log amount", "same_community": "same Louvain community", "forward_ratio": "forward ratio"}
+
+
+def cluster_table():
+    d = uclu[uclu.exp == "C"].sort_values("fraud_rate")
+    names = {0: "Velocity bursts", 1: "Normal traffic", 2: "Unusual amount, community flows", 3: "Fan-in hubs"}
+    rows = []
+    for r in d.itertuples():
+        prof = ucs["C"]["profile"][str(r.cluster)][:3]
+        rows.append([f"{r.cluster} · {names.get(r.cluster, '')}", f"{r.n:,}", pct(r.fraud_rate, 0), pct(r.share_LEGITIMATE, 0), pct(r.share_BORDERLINE, 0),
+                     ", ".join(f"{NICE.get(f, f.replace('_', ' '))} {v:+.1f}σ" for f, v in prof)])
+    return table(rows, ["Cluster", "Rows", "Fraud", "Legit", "Borderline", "Defining centroid features"], "num small",
+                 widths=["22%", "8%", "8%", "8%", "10%", "44%"])
+
+
+def detector_table():
+    rows = []
+    for e in ("C", "B"):
+        for dname in DET:
+            r = anr[(anr.exp == e) & (anr.detector == dname)].iloc[0]
+            rows.append([f"{DET[dname]}, Exp {e}", f3(r.pr_auc), f3(r.roc_auc), f"{r.recall_at_1pct_fpr:.2f}",
+                         f"{r.p95_precision:.2f} / {r.p95_recall:.2f}", f"{r.p99_precision:.2f} / {r.p99_recall:.2f}", pct(r.p95_borderline_flag_rate, 0)])
+    rows.append(["XGBoost (supervised, Phase 5), Exp C", f3(best["test_pr_auc"]), f3(best["test_roc_auc"]), "—",
+                 f"{best['test_precision']:.2f} / {best['test_recall']:.2f} (val. threshold)", "—", pct(best["test_borderline_flag_rate"], 0)])
+    return table(rows, ["Detector (v1.1 test)", "PR-AUC", "ROC-AUC", "Recall @1% FPR", "P / R at p95", "P / R at p99", "BORDERLINE flagged"], "num small",
+                 widths=["30%", "9%", "9%", "11%", "16%", "13%", "12%"])
+
+
+def anomaly_scen_table():
+    d = ascen[ascen.risk_label == "FRAUDULENT"]
+    piv = d.pivot_table(index="scenario", columns="detector", values="flag_rate")
+    n = d.drop_duplicates("scenario").set_index("scenario")["n"]
+    piv = piv.loc[sorted(piv.index, key=lambda x: int(x.split()[0][1:]))]
+    cols = ["isolation_forest", "ocsvm_nu0.05", "autoencoder", "xgboost_supervised"]
+    return table([[sc, n[sc]] + [pct(piv.loc[sc, c], 0) for c in cols] for sc in piv.index],
+                 ["Fraud scenario", "n (test)", "Isolation Forest", "OC-SVM ν=0.05", "Autoencoder", "XGBoost (supervised)"], "num small")
+
+
+def paysim_table():
+    fs = ups["feature_sets"]
+    nm = {"raw": "amount + balances (7 features)", "raw+balance_error": "+ 2 balance-error features (9)"}
+    return table([[nm[k], f3(v["pr_auc"]), f3(v["roc_auc"]), f"{v['recall_at_1pct_fpr']:.2f}", f"{v['p99_precision']:.2f} / {v['p99_recall']:.2f}",
+                   f"{v['fit_seconds']:.1f} / {v['score_seconds']:.0f}", f"{v['rows_per_second']:,}"] for k, v in fs.items()],
+                 ["Isolation Forest features", "PR-AUC", "ROC-AUC", "Recall @1% FPR", "P / R at p99", "Fit / score s", "Rows per s"], "num small")
+
+
 inj = meta11["injection"]
 inj_rows = inj["rows_by_group_type"]
 v10, v11 = mining["v1_0"], mining["v1_1"]
@@ -224,8 +336,8 @@ add(f"""
   <div class="cover-grid">
     <div><b>Document</b><span>Complete project report: planning, design, implementation, results, status and hand-off guide</span></div>
     <div><b>Version / date</b><span>Report v1.0 · {TODAY}</span></div>
-    <div><b>Status</b><span>Phases 0–5 complete (data, mining, supervised ML). Phases 6–10 designed, not yet built (unsupervised/anomaly, tuning + stacking + SHAP, services, dashboard, deployment).</span></div>
-    <div><b>Headline result</b><span>XGBoost on all features: test PR-AUC {best['test_pr_auc']:.3f}, ROC-AUC {best['test_roc_auc']:.3f}, F1 {best['test_f1']:.3f} (recall {pct(best['test_recall'],0)}). Network features add a significant gain only where real network structure exists.</span></div>
+    <div><b>Status</b><span>Phases 0–9 complete (data, mining, supervised ML, unsupervised + anomaly detection, tuning + risk score + explanations, microservices + Docker, React dashboard). Phase 10 (cloud deployment on Render + Vercel and the final measurements) is designed and ready to run.</span></div>
+    <div><b>Headline result</b><span>Production model (tuned, calibrated XGBoost): test PR-AUC {FT['test_pr_auc']:.3f}, ROC-AUC {FT['test_roc_auc']:.3f}, F1 {FT['test_f1']:.3f} (precision {pct(FT['test_precision'],0)}, recall {pct(FT['test_recall'],0)}). Network features add a significant gain only where real network structure exists.</span></div>
     <div><b>Deployment target</b><span>React dashboard on Vercel · FastAPI microservices in Docker on Render</span></div>
     <div><b>Repository</b><span>github.com/bharathakn/FinSight-AI</span></div>
   </div>
@@ -236,18 +348,18 @@ add(f"""
 <h2 class="nonum">How to use this document</h2>
 <p>This single PDF is meant to be enough for three separate course reports and three presentations. Every number comes directly from the project's result files.</p>
 {table([
- ["Data Mining &amp; Wrangling (DMW)", "1–10, 11 (baselines: rules vs ML), 13 (DMW table), 14, 15.1", "KDD pipeline, wrangling, data quality and leakage audit, v1.1 dataset engineering, discretisation, Apriori vs FP-Growth, rule evaluation"],
- ["Machine Learning (ML)", "1–3, 5, 7–9, 11, 12, 13 (ML table), 14, 15.2", "Feature engineering, experimental protocol, 6 classifiers × 3 feature sets × 2 datasets, significance testing, imbalance, per-scenario analysis; planned clustering, anomaly detection, tuning, stacking, SHAP"],
- ["Cloud Computing &amp; Technology (CCT)", "1–4, 12, 13 (CCT table), 14, 15.3", "Microservice architecture, REST API, containers, Vercel + Render deployment design, free-tier constraints, CI/CD, IaC, scale-to-zero"],
+ ["Data Mining &amp; Wrangling (DMW)", "1–10, 11 (baselines: rules vs ML), 12 (cluster analysis, PaySim scale), 15 (dashboard: data and pattern pages), 17 (DMW table), 18, 19.1", "KDD pipeline, wrangling, data quality and leakage audit, v1.1 dataset engineering, discretisation, Apriori vs FP-Growth, rule evaluation"],
+ ["Machine Learning (ML)", "1–3, 5, 7–9, 11, 12, 13, 14 (model serving), 15 (risk scorer, ML lab), 17 (ML table), 18, 19.2", "Feature engineering, experimental protocol, 6 classifiers × 3 feature sets × 2 datasets, significance testing, imbalance, per-scenario analysis; clustering, anomaly detection, autoencoder → ONNX; tuning, bias–variance, stacking, calibration, risk score, SHAP"],
+ ["Cloud Computing &amp; Technology (CCT)", "1–4, 12–13 (serving artifacts), 14, 15, 16, 17 (CCT table), 18, 19.3", "Microservices (built + measured), REST API, Docker, Compose scaling, load testing, observability, security; Vercel + Render deployment design, free-tier constraints, CI/CD, IaC, scale-to-zero"],
 ], ["If you are writing for…", "Read chapters", "Core material"], raw=True, widths=["25%", "30%", "45%"])}
-<p>Chapter 15 contains ready-made <b>report outlines and slide-by-slide deck outlines</b> for each subject, with the figure to use on each slide. The figures are also available as PNG files in <code>reports/figures/</code> of the repository.</p>
+<p>Chapter 19 contains ready-made <b>report outlines and slide-by-slide deck outlines</b> for each subject, with the figure to use on each slide. The figures are also available as PNG files in <code>reports/figures/</code> of the repository.</p>
 
 <h2 class="nonum">Contents</h2>
 <ol class="toc">
 <li>Executive summary</li><li>Introduction, objectives and research questions</li><li>Datasets</li>
 <li>Planning, methodology and project management</li><li>Phase 0: dataset audit</li><li>Phase 1: data wrangling and data quality</li>
 <li>Phase 1b: dataset v1.1 (graph-structure injection)</li><li>Phase 3: graph (network) features</li><li>Phase 2: exploratory data analysis</li>
-<li>Phase 4: association rule mining</li><li>Phase 5: supervised classification</li><li>Planned work: phases 6–10 (design)</li>
+<li>Phase 4: association rule mining</li><li>Phase 5: supervised classification</li><li>Phase 6: unsupervised learning and anomaly detection</li><li>Phase 7: tuning, ensembles, calibration, risk score and explanations</li><li>Phase 8: cloud services and containers</li><li>Phase 9: the web dashboard</li><li>Planned work: phase 10 (deployment)</li>
 <li>Syllabus mapping</li><li>Conclusions, limitations and future work</li><li>Guide for report and presentation writers</li>
 <li>Appendices: decision log · feature dictionary · glossary · reproducibility · references</li>
 </ol>
@@ -259,13 +371,17 @@ add(f"""
 <section>
 <h1>Executive summary</h1>
 <p><b>FinSight AI</b> is a financial-transaction intelligence platform built as one project for three courses. It takes a synthetic Indian payment ecosystem (10,000 UPI/NEFT/RTGS transactions, 1,200 customers, 1,500 accounts) plus four public datasets (IEEE-CIS fraud, PaySim mobile money, OFAC and UN sanctions lists). It runs the full <b>KDD process</b> (data mining), builds and rigorously compares <b>machine-learning models</b>, and is being packaged as <b>cloud microservices</b> with a web dashboard.</p>
-<h3>What has been done (phases 0–5 of 10)</h3>
+<h3>What has been done (phases 0–9 of 10)</h3>
 <ul>
 <li><b>Audit before building.</b> The original plan was checked against the data. The audit found label-leaking columns (<code>rapid_forward_delta_sec</code>, <code>is_flagged_alert</code>, <code>alert_id</code>), a join that matched only 8 of 10,000 rows, redundant and constant columns, and, most importantly, that the dataset's "network" fraud scenarios (rings, mules, layering) <b>had no network structure at all</b>: every graph feature scored AUC ≈ 0.50.</li>
 <li><b>Dataset engineering (v1.1).</b> A seeded, logged, tested injection step wired those scenarios into real graph structure. It added legitimate look-alike patterns (merchant hubs, family devices) so the signal isn't a giveaway, and camouflaged 50% of organised fraud so it looks normal per transaction. Labels were never changed; v1.0 is kept as a control.</li>
 <li><b>Wrangling and quality.</b> Seven files were merged into one 57-column table, then 76 columns with 19 point-in-time network features. Data-quality and leakage reports were produced, and 20,332 sanctions entities were parsed from CSV + XML.</li>
 <li><b>Association rule mining.</b> Apriori and FP-Growth return identical itemsets, but Apriori needs <b>{hp['apriori']['peak_mb']:,.0f} MB vs {hp['fpgrowth']['peak_mb']:.1f} MB</b> at the hardest setting. {v11['productive']} productive rules were found on v1.1 ({v11['productive_fraud_with_network_item']} use network items) vs {v10['productive']} on v1.0 (none use network items). Top rule: <i>pass-through → fraud</i>, confidence 99%, lift 7.4.</li>
 <li><b>Supervised learning.</b> 6 classifiers × 3 feature sets × 2 dataset versions, compared with 5×2 repeated cross-validation and paired significance tests. Behavioural features help every model. Network features help <b>5 of 6 models significantly on v1.1 (p &lt; 0.001) and 0 of 6 on v1.0</b>. Best model: <b>XGBoost, test PR-AUC {best['test_pr_auc']:.3f}, F1 {best['test_f1']:.3f}</b>. SMOTE never improved results.</li>
+<li><b>Unsupervised learning and anomaly detection.</b> Without labels, K-Means (K = {ucs['C']['k']}) separates normal traffic (3% fraud) from three interpretable risk clusters (velocity bursts, fan-in hubs, unusual-amount community flows; ARI {ucs['C']['kmeans_vs_label']['ari']:.2f}). Detectors trained only on legitimate rows reach <b>PR-AUC ≈ {uan['best_detector_expC']['pr_auc']:.2f}</b> (One-class SVM ≈ autoencoder) vs {best['test_pr_auc']:.3f} supervised. They flag ~80% of BORDERLINE rows (<i>anomalous ≠ fraudulent</i>) and recover {uan['complementarity']['caught_by']['autoencoder']} of the {uan['complementarity']['xgb_missed']} frauds XGBoost misses. The autoencoder ships as a {upar['onnx_bytes'] // 1024} KB ONNX file; an Isolation Forest scores {ups['rows_scored']/1e6:.2f} M PaySim rows at ~{ups['feature_sets']['raw']['rows_per_second']//1000*1000:,} rows/s.</li>
+<li><b>Tuning, ensembles and the risk score.</b> Grid and randomized search with cross-validation improved every model (decision tree +0.058 PR-AUC). A stacking ensemble did not beat tuned XGBoost, so the <b>production model is a tuned, isotonic-calibrated XGBoost: test PR-AUC {FT['test_pr_auc']:.3f}, F1 {FT['test_f1']:.3f}</b> (Phase 5 default: {best['test_f1']:.3f}), in a {fs7['artifact_sizes_mb']['production_model.joblib']} MB file. A 0–100 risk score combines it with the anomaly percentile and a network-flag score; validation-chosen tiers put {pct(ftiers.loc['FRAUDULENT','CRITICAL_share'],0)} of fraud in CRITICAL and {pct(ftiers.loc['LEGITIMATE','LOW_share'],0)} of legitimate payments in LOW. Every score is explained with SHAP values computed natively by XGBoost.</li>
+<li><b>Cloud services.</b> The models run behind a FastAPI <b>API gateway and four microservices</b> (ML, mining, graph, sanctions) in Docker, or as one container for the free cloud tier. The same code runs in both modes and returns identical scores. A warm score takes <b>{PW['compose-remote']['client_p95_ms']:.0f} ms (p95)</b>; the single container uses {plat['warm']['compose-inprocess']['rss_mb']['gateway']:.0f} MB of memory, within Render's 512 MB free instance. A load test served {PL['remote_ml3']['rps_total']:.0f} requests/s with no errors, and scaling the ML service to three replicas cut median latency from {PL['remote_ml1']['p50_ms']:.0f} to {PL['remote_ml3']['p50_ms']:.0f} ms.</li>
+<li><b>Web dashboard.</b> A React single-page app with nine pages (overview, data quality, transaction explorer, pattern-mining lab, ML lab, clustering and anomaly, network explorer, a what-if risk scorer and a platform page) presents every result live from the API, in light and dark themes, and is ready to deploy on Vercel's CDN.</li>
 </ul>
 <h3>Key results at a glance</h3>
 {table([
@@ -273,12 +389,15 @@ add(f"""
  ["RQ2 top fraud patterns", "{PASS_THROUGH} 99% conf · {UPI, high spike, hub receiver} 100% · {quick inflow, recent beneficiary} 95% · {₹45–50k, recent beneficiary} 90%"],
  ["RQ2 Apriori vs FP-Growth", f"identical results; Apriori faster on small searches (vectorised), FP-Growth faster and ~17× leaner on large ones"],
  ["RQ3 feature groups", "B (behaviour) > A for 12/12 model-dataset pairs; C (network) > B for 5/6 models on v1.1 and 0/6 on v1.0"],
- ["RQ4 best model", f"XGBoost Exp C: PR-AUC {best['test_pr_auc']:.3f} · ROC-AUC {best['test_roc_auc']:.3f} · precision {best['test_precision']:.2f} · recall {best['test_recall']:.2f}"],
+ ["RQ4 best model", f"tuned + calibrated XGBoost (lr ≈ 0.024, ~465 trees, depth 6): PR-AUC {FT['test_pr_auc']:.3f} · ROC-AUC {FT['test_roc_auc']:.3f} · F1 {FT['test_f1']:.3f} · precision {FT['test_precision']:.2f} · recall {FT['test_recall']:.2f}; stacking no better"],
+ ["RQ5 clustering without labels", f"partly: K = {ucs['C']['k']} on all features gives 1 normal + 3 risk clusters (ARI {ucs['C']['kmeans_vs_label']['ari']:.2f}); reviewing the risk clusters catches {pct(ucs['C']['flag_high_fraud_clusters']['recall'],0)} of fraud at {pct(ucs['C']['flag_high_fraud_clusters']['precision'],0)} precision; silhouette ≤ 0.16 (weak structure)"],
+ ["RQ6 anomaly detection", f"One-class SVM PR-AUC {uan['best_detector_expC']['pr_auc']:.3f} ≈ autoencoder > Isolation Forest; catches single-transaction anomalies ≥ 94%, network fraud 40–76%, high-value spikes ≤ 15%; flags ~80% of BORDERLINE"],
  ["RQ7 hardest cases", "high-value spike (80% recall); layering without network features (65% → 85% with them); BORDERLINE causes 65% of false positives"],
- ["Rules vs ML (same test set)", f"association rules F1 {rb['test']['f1']:.3f} / PR-AUC {rb['test']['pr_auc']:.3f} vs XGBoost F1 {best['test_f1']:.3f} / PR-AUC {best['test_pr_auc']:.3f}"],
+ ["Rules vs ML (same test set)", f"association rules F1 {rb['test']['f1']:.3f} / PR-AUC {rb['test']['pr_auc']:.3f} vs production model F1 {FT['test_f1']:.3f} / PR-AUC {FT['test_pr_auc']:.3f}"],
+ ["Risk score + tiers", f"weights model {RSC['weights']['model']:.2f} / anomaly {RSC['weights']['anomaly']:.2f} / graph {RSC['weights']['graph']:.2f}; PR-AUC {fs7['risk_score_test']['final']['pr_auc']:.3f}; fraud ≥ HIGH {pct(ftiers.loc['FRAUDULENT','HIGH_share']+ftiers.loc['FRAUDULENT','CRITICAL_share'],0)}, legitimate in LOW {pct(ftiers.loc['LEGITIMATE','LOW_share'],0)}"],
 ], ["Question", "Finding"], widths=["28%", "72%"])}
 <h3>What remains (designed, not yet built)</h3>
-<p>Phase 6 clustering and anomaly detection (K-Means, DBSCAN, Isolation Forest, One-class SVM, autoencoder). Phase 7 hyperparameter tuning, stacking ensemble, calibration, SHAP explanations and the 0–100 risk score. Phase 8 FastAPI microservices and Docker. Phase 9 React dashboard. Phase 10 deployment on <b>Vercel (frontend) and Render (backend)</b> and the final report. RQ5, RQ6 and RQ8 are answered in those phases.</p>
+<p>Phase 10: deployment on <b>Vercel (dashboard) and Render (API)</b>, the Render vs Google Cloud Run comparison, cold-start measurements and the final report. RQ8 is completed there.</p>
 </section>
 """)
 
@@ -305,11 +424,11 @@ add(f"""
  ["RQ1", "Which transactional and behavioural features are most strongly associated with suspicious activity?", "DMW", "Answered (Ch. 9)"],
  ["RQ2", "What recurring combinations of behaviours does association-rule mining discover, and how do Apriori and FP-Growth compare?", "DMW", "Answered (Ch. 10)"],
  ["RQ3", "Do behavioural (Exp B) and network (Exp C) features measurably improve classification over raw transaction features (Exp A), and only where real network structure exists (v1.0 vs v1.1)?", "ML", "Answered (Ch. 11)"],
- ["RQ4", "Which classifier performs best, with which hyperparameters, and does SMOTE beat class weighting?", "ML", "Model and imbalance answered (Ch. 11); hyperparameters in Phase 7"],
- ["RQ5", "Can unsupervised clustering recover risk groupings without labels?", "ML", "Planned (Phase 6)"],
- ["RQ6", "How well do Isolation Forest, One-class SVM and an autoencoder trained only on legitimate data detect fraud?", "ML", "Planned (Phase 6)"],
+ ["RQ4", "Which classifier performs best, with which hyperparameters, and does SMOTE beat class weighting?", "ML", "Answered (Ch. 11, 13)"],
+ ["RQ5", "Can unsupervised clustering recover risk groupings without labels?", "ML", "Answered (Ch. 12)"],
+ ["RQ6", "How well do Isolation Forest, One-class SVM and an autoencoder trained only on legitimate data detect fraud?", "ML", "Answered (Ch. 12)"],
  ["RQ7", "Which scenarios (and BORDERLINE cases) are hardest for the models?", "ML + DMW", "Answered (Ch. 11)"],
- ["RQ8", "How does a containerised microservice architecture on managed cloud platforms support independent deployment, scaling and cost (scale-to-zero vs cold start)?", "CCT", "Planned (Phases 8–10)"],
+ ["RQ8", "How does a containerised microservice architecture on managed cloud platforms support independent deployment, scaling and cost (scale-to-zero vs cold start)?", "CCT", "Partly answered locally (Ch. 14); cloud measurements in Phase 10"],
 ], ["ID", "Question", "Subject", "Status"], widths=["7%", "60%", "11%", "22%"])}
 <h2>Scope and non-goals</h2>
 <p>In scope: offline analytics and model building on the provided datasets, a scoring API and a dashboard. Out of scope: real customer data, real-time streaming infrastructure (Kafka), graph databases (Neo4j), and Kubernetes clusters (only conceptual manifests). These were deliberately excluded to keep the project deliverable.</p>
@@ -339,7 +458,7 @@ add(f"""
  ["Custom India synthetic v1.0", "7 CSV files", "10,000 transactions · 1,200 customers · 1,500 accounts · 1,400 devices · 2,000 beneficiaries", "Primary corpus; v1.0 kept as untouched control"],
  ["Custom India synthetic v1.1", "derived by this project", "same rows; 1,470 rows modified (structure, decoys, camouflage); labels unchanged", "Primary training data"],
  ["IEEE-CIS Fraud (Kaggle)", "2 tables (transaction + identity)", "590,540 train rows × 394 cols ⋈ 144,233 identity rows × 41 cols; 506,691 test rows", "Data-quality / missingness showcase (planned profiling)"],
- ["PaySim mobile money", "1 CSV", "6,362,620 rows, 11 columns, 8,213 frauds (0.13%)", "Big-data wrangling with Polars; mining scale test; planned anomaly track"],
+ ["PaySim mobile money", "1 CSV", "6,362,620 rows, 11 columns, 8,213 frauds (0.13%)", "Big-data wrangling with Polars; mining scale test; Isolation Forest scale track (Ch. 12)"],
  ["OFAC SDN list", "headerless CSV", "19,321 entities; '-0-' as the null marker; aliases inside free-text remarks", "Sanctions screening service"],
  ["UN Consolidated list", "XML", "736 individuals + 275 entities, with aliases and original-script names", "Sanctions screening service"],
  ["RBI Master Directions; FATF Recommendations 2026", "PDF", "—", "Compliance framing for the report"],
@@ -381,10 +500,10 @@ add(f"""
  ["3", "Graph features", "ML+DMW", "✔ features done", "13 point-in-time + 6 global features"],
  ["4", "Association rule mining", "DMW", "✔ done", "Benchmark, rules, emerging patterns, PaySim scale"],
  ["5", "Supervised ML", "ML", "✔ done", "72 configs, paired CV, imbalance, temporal, per-scenario"],
- ["6", "Unsupervised + anomaly", "ML", "planned", "K-Means, DBSCAN, IF, OC-SVM, autoencoder (PyTorch → ONNX)"],
- ["7", "Tuning + stacking + SHAP", "ML", "planned", "Grid/Random search, stacking, calibration, risk score"],
- ["8", "Services + Docker", "CCT", "planned", "5 FastAPI services, Compose, two service modes"],
- ["9", "Dashboard", "All", "planned", "React SPA, 9 pages"],
+ ["6", "Unsupervised + anomaly", "ML", "✔ done", "K-Means, DBSCAN, PCA/t-SNE; IF, OC-SVM, autoencoder (PyTorch → ONNX); PaySim IF"],
+ ["7", "Tuning + stacking + SHAP", "ML", "✔ done", "Grid/Random search, learning curves, stacking, isotonic calibration, risk score + tiers, SHAP"],
+ ["8", "Services + Docker", "CCT", "✔ done", "5 FastAPI services, one multi-stage Dockerfile, Compose, two service modes, load test"],
+ ["9", "Dashboard", "All", "✔ done", "React + Vite SPA, 9 pages, light/dark, wake-up screen"],
  ["10", "Deployment + report", "CCT", "planned", "Render (backend) + Vercel (frontend), measurements"],
 ], ["Phase", "Name", "Subject", "Status", "Outcome / scope"], "small", widths=["7%", "26%", "10%", "13%", "44%"])}
 <h2>Plan review: from v1 to v2</h2>
@@ -402,17 +521,17 @@ add(f"""
 <ul>
 <li><b>Single source of truth:</b> all logic lives in the Python package <code>src/finsight/</code>. Notebooks only call it, and the batch pipeline (<code>python -m finsight.pipeline</code>) reproduces every output.</li>
 <li><b>Reproducibility:</b> global seed 42. The v1.1 dataset is regenerated byte-identically (tested). The environment is pinned with <code>uv.lock</code> (Python 3.12, CPU-only PyTorch/XGBoost).</li>
-<li><b>Testing:</b> 31 automated tests (pytest) cover the dataset invariants, point-in-time correctness, the leakage blacklist, split disjointness, mining correctness and the evaluation maths.</li>
-<li><b>Documentation:</b> a design plan, phase tracker (<code>docs/PROGRESS.md</code>), decision log (24 decisions with evidence), data reference, setup guide and an agent manual (<code>CLAUDE.md</code>) for AI-assisted development.</li>
+<li><b>Testing:</b> {N_TESTS} automated tests (pytest) cover the dataset invariants, point-in-time correctness, the leakage blacklist, split disjointness, mining correctness, the evaluation maths, the anomaly-detector training rows and ONNX parity.</li>
+<li><b>Documentation:</b> a design plan, phase tracker (<code>docs/PROGRESS.md</code>), decision log ({len(decisions())} decisions with evidence), data reference, setup guide and an agent manual (<code>CLAUDE.md</code>) for AI-assisted development.</li>
 <li><b>Visual standard:</b> one validated, colour-blind-safe palette; the same entity always has the same colour (blue = legitimate, orange = fraudulent, aqua = borderline); every figure was inspected after rendering.</li>
 </ul>
 <h2>Technology stack</h2>
 {table([
  ["Language / environment", "Python 3.12, uv, Jupyter"], ["Data", "pandas 3, NumPy, PyArrow (Parquet), Polars (6.36M-row PaySim)"],
- ["Mining", "MLxtend (Apriori, FP-Growth, FP-Max)"], ["Machine learning", "scikit-learn, XGBoost, imbalanced-learn; PyTorch → ONNX (planned autoencoder)"],
+ ["Mining", "MLxtend (Apriori, FP-Growth, FP-Max)"], ["Machine learning", "scikit-learn, XGBoost, imbalanced-learn; PyTorch autoencoder → ONNX → onnxruntime; SHAP"],
  ["Graph", "NetworkX (PageRank, Louvain communities)"], ["Sanctions", "RapidFuzz fuzzy matching, lxml"],
- ["Visualisation", "Matplotlib (report figures); Plotly.js (dashboard)"], ["API / services (planned)", "FastAPI, Pydantic, Uvicorn, httpx"],
- ["Frontend (planned)", "React + Vite + TypeScript, deployed on Vercel"], ["Cloud (planned)", "Docker, Docker Compose, Render (Blueprint IaC), Vercel, GitHub Actions, GitHub Releases"],
+ ["Visualisation", "Matplotlib (report figures); Plotly.js (dashboard)"], ["API / services", "FastAPI, Pydantic, Uvicorn, httpx; Docker, Docker Compose; Locust (load testing)"],
+ ["Frontend", "React 18 + Vite + TypeScript, Plotly.js; static build for Vercel"], ["Cloud (planned)", "Render (Blueprint IaC), Vercel, Google Cloud Run (comparison), GitHub Actions, GitHub Releases"],
 ], ["Layer", "Technology"], widths=["30%", "70%"])}
 </section>
 """)
@@ -616,48 +735,238 @@ add(f"""
 </section>
 """)
 
-# 12 planned
+# 12 phase 6
+cC, compl = ucs["C"], uan["complementarity"]
 add(f"""
 <section>
-<h1>Planned work: phases 6–10 (design)</h1>
-<p class="callout">These phases are fully designed but <b>not yet implemented</b>. Their numbers will be added to this report when they're done. The designs below are what the team should describe as "proposed / in progress" if the reports are due earlier.</p>
-<h2>Phase 6: unsupervised learning and anomaly detection (RQ5, RQ6)</h2>
-<ul>
-<li><b>K-Means</b> on behavioural features, K = 2–8, chosen by elbow, silhouette and Davies–Bouldin; then fraud % per cluster and Adjusted Rand Index vs labels. <b>DBSCAN</b> with a k-distance plot for ε; noise points vs fraud. PCA and t-SNE projections.</li>
-<li><b>Anomaly detectors trained only on legitimate training rows:</b> Isolation Forest, One-class SVM (RBF) and an autoencoder (32-16-8-16-32, PyTorch, exported to ONNX for lightweight serving), each thresholded at the 95th/99th percentile of training scores. Compared by PR-AUC and recall at 1% false-positive rate, per scenario.</li>
-<li><b>PaySim track:</b> Isolation Forest on PaySim's own features (6.36M rows via Polars) evaluated against its fraud labels.</li>
-<li>Expected from EDA: clusters separate legitimate from {{fraud ∪ borderline}} but not fraud from borderline.</li>
-</ul>
-<h2>Phase 7: tuning, stacking, explanation, risk score</h2>
-<ul>
-<li>GridSearchCV (decision tree, KNN) and RandomizedSearchCV (random forest, XGBoost; 20 iterations) with 5-fold stratified CV; learning curves for the bias–variance discussion.</li>
-<li><b>Stacking ensemble:</b> RF + XGBoost + MLP → logistic regression meta-learner on out-of-fold probabilities, then isotonic calibration so scores are true probabilities.</li>
-<li><b>Explanations:</b> SHAP (global importance, beeswarm, per-transaction waterfall). At serve time, XGBoost's built-in TreeSHAP (<code>pred_contribs</code>) avoids the heavy <code>shap</code> library on a 512 MB server.</li>
-<li><b>Risk score 0–100</b> = weighted mix of calibrated fraud probability, anomaly percentile and graph risk (weights chosen on validation), with overrides: sanctions match ≥ 90 → CRITICAL; PEP customer → at least MEDIUM; structuring rule → +10. Tiers LOW / MEDIUM / HIGH / CRITICAL, with a dedicated review band for BORDERLINE-like scores.</li>
-<li>Bar to beat: XGBoost Exp C test PR-AUC {best['test_pr_auc']:.3f}.</li>
-</ul>
-<h2>Phase 8: services and containers</h2>
-{flow([("React SPA", "Vercel CDN"), ("api-gateway :8000", "routing · scoring · CORS · /health · /metrics"), [("ml-service :8001", "classifier · anomaly · cluster · explain"), ("mining-service :8002", "rules · matching · benchmark")], [("graph-service :8003", "point-in-time features · ego graphs"), ("sanctions-service :8004", "fuzzy OFAC + UN screening")]])}
+<h1>Phase 6: unsupervised learning and anomaly detection</h1>
+<p>Phase 5 asked how well a model can learn fraud <i>from labels</i>. Phase 6 asks what can be found <b>without them</b>: do transactions fall into natural risk groups (RQ5, cluster analysis), and can a model that has only ever seen legitimate behaviour flag fraud as "unusual" (RQ6, anomaly detection)? This matters in practice because new fraud patterns appear before anyone has labelled them.</p>
+<h2>Design</h2>
 {table([
- ["POST /score-transaction", "risk 0–100, tier, component scores, top feature contributions, cluster, fired rules, sanctions"],
- ["POST /anomaly-score", "Isolation Forest / OC-SVM / autoencoder scores"],
- ["GET /patterns, /patterns/benchmark", "association rules (filterable) and the Apriori vs FP-Growth results"],
- ["GET /cluster/{{tx_id}} · /network/{{account_id}} · /transactions/{{tx_id}}", "cluster profile · network metrics + ego graph · full merged profile"],
- ["GET /sanctions-check?name=", "fuzzy matches with scores"],
- ["GET /models/compare", "the A/B/C × model results matrix"],
- ["GET /health, /metrics", "status and latency/request statistics"],
+ ["Data", f"v1.1, same stratified 60/20/20 split as Phase 5. Exp B ({ucs['B']['n_features_after_encoding']} encoded columns) and Exp C ({cC['n_features_after_encoding']}); signed-log + standardisation, one-hot categoricals; leakage/ID blacklist enforced"],
+ ["Clustering", "all 10,000 rows; labels never used to fit, only attached afterwards (fraud rate, scenario mix, Adjusted Rand Index, NMI)"],
+ ["K-Means", "K = 2…8 scored by inertia (elbow), silhouette and Davies–Bouldin. Rule: lowest Davies–Bouldin among the K values within 0.005 of the best silhouette (D-026)"],
+ ["DBSCAN", f"min_samples = {cC['dbscan']['min_samples']}, ε = {cC['dbscan']['eps']:.2f} from the knee of the k-distance curve"],
+ ["Projections", "PCA (linear) and t-SNE (non-linear, perplexity 40), coloured by label and by cluster"],
+ ["Anomaly detectors", f"Isolation Forest (300 trees), One-class SVM (RBF, ν = 0.01 and 0.05), autoencoder (d → 32 → 16 → 8 → 16 → 32 → d, PyTorch). Fitted on the {uan['train_rows_legit']:,} <b>legitimate training rows only</b> (no fraud, no BORDERLINE)"],
+ ["Thresholds", f"95th and 99th percentile of scores on the {uan['reference_rows_legit_val']:,} legitimate <b>validation</b> rows (D-025); the same reference gives each transaction an anomaly percentile for the risk score"],
+ ["Metrics", f"test set ({uan['test_rows']:,} rows): PR-AUC, ROC-AUC, recall at 1% false-positive rate, precision/recall at p95/p99, BORDERLINE flag rate, per-scenario flag rate"],
+ ["Scale track", f"Isolation Forest on {ups['rows_scored']:,} PaySim TRANSFER/CASH_OUT rows (Polars lazy pipeline), evaluated against PaySim's isFraud"],
+], ["Item", "Choice"], "small", widths=["18%", "82%"], raw=True)}
+<h2>RQ5: clustering</h2>
+{fig("unsup_01_kmeans_selection", "K-Means model selection. Silhouette is low (≤ 0.16) and flat for K = 2–4, so it can't choose K alone; Davies–Bouldin favours K = 4 for Exp C and K = 3 for Exp B (circled). Exp C has the higher silhouette: network features give the clusters more to separate on.")}
+{cluster_summary_table()}
+<p>"Risk clusters P / R": precision and recall if an analyst reviewed every row in the clusters whose fraud rate is above the 13.5% base rate.</p>
+{fig("unsup_02_cluster_composition", "Exp C clusters with labels attached afterwards. Each cluster is named by its most extreme centroid features (in standard deviations).", "92%")}
+{cluster_table()}
+<p><b>The four clusters map onto fraud mechanisms.</b> Cluster 0 is the S3 rapid-burst scenario (senders with ~7σ more transactions in the last 10 minutes). Cluster 3 is the S9 fraud-ring hubs (receivers with ~4σ more distinct senders). Cluster 2 collects most other fraud (layering, mules, new device/beneficiary, impossible travel) through unusual amounts and same-community flows. The normal cluster still hides the frauds designed to blend in (about half of the S2 high-value spikes and 39% of S6 structuring).</p>
+{fig("unsup_03_embeddings", "PCA (top) keeps only 15% of the variance in 2-D; t-SNE (bottom) shows the burst and hub clusters as tight islands and several pure-fraud islands (the injected rings and mules), while camouflaged fraud stays inside the normal mass.", "92%")}
+{fig("unsup_04_dbscan", f"DBSCAN marks {cC['dbscan']['noise_n']} points ({pct(cC['dbscan']['noise_rate'])}) as noise; they are {pct(cC['dbscan']['fraud_rate_noise'],0)} fraud vs {pct(cC['dbscan']['fraud_rate_clustered'],0)} elsewhere, but cover only {pct(cC['dbscan']['noise_rate_by_label']['FRAUDULENT'],1)} of all fraud.")}
+<p><b>Answer to RQ5: partly.</b> With no labels, K-Means isolates normal traffic (3% fraud) from three interpretable risk groups, with ARI {cC['kmeans_vs_label']['ari']:.2f} against the 3-class label (Exp B: {ucs['B']['kmeans_vs_label']['ari']:.2f}). Reviewing the risk clusters would catch {pct(cC['flag_high_fraud_clusters']['recall'],0)} of fraud at {pct(cC['flag_high_fraud_clusters']['precision'],0)} precision, about three times the base rate. But silhouette ≤ 0.16 means the structure is weak, and 41–60% of each risk cluster is not fraud. Clustering is a <b>triage and explanation</b> tool, not a classifier. For the DMW report, this is the cluster-analysis component, and the cluster profiles are the "description" output of the KDD process.</p>
+<h2>RQ6: anomaly detection trained only on legitimate behaviour</h2>
+{fig("unsup_05_detector_pr", "Precision–recall on the test set (Exp C). The One-class SVMs and the autoencoder are nearly identical; Isolation Forest is weaker; the supervised XGBoost (dashed) stays far ahead.", "82%")}
+{detector_table()}
+<ul>
+<li>Never having seen a fraud label, the One-class SVM and the autoencoder reach <b>PR-AUC ≈ 0.55, four times the no-skill level</b> (0.135), with ROC-AUC ≈ 0.87. The choice of ν barely matters.</li>
+<li><b>Isolation Forest is weakest</b>: its random axis-aligned splits are wasted on the many one-hot and near-constant columns. It is also the detector that gains most from network features (PR-AUC {f3(anr.query("exp=='B' and detector=='isolation_forest'").pr_auc.iloc[0])} → {f3(anr.query("exp=='C' and detector=='isolation_forest'").pr_auc.iloc[0])}).</li>
+<li>For the OC-SVM and autoencoder, network features raise ROC-AUC (≈ 0.81–0.85 → 0.87) but not PR-AUC, and recall at 1% FPR falls. The 19 extra columns widen what "normal" looks like. A supervised model can use new columns selectively; an unsupervised detector has to weigh them all.</li>
+<li><b>Anomalous ≠ fraudulent.</b> Every strong detector flags ~80% of BORDERLINE rows. Those transactions are genuinely unusual (travel, new devices, large first payments) but legitimate. This is the main limitation of anomaly detection for fraud.</li>
+</ul>
+{fig("unsup_06_detector_bars", "Exp B vs Exp C for each detector: PR-AUC, recall at 1% false-positive rate, and the share of BORDERLINE rows flagged.")}
+<h3>Per scenario</h3>
+{anomaly_scen_table()}
+{fig("unsup_07_scenario_heatmap", "Flag rate for every scenario × label on the test set. Fraud rows: higher is better. Legitimate and BORDERLINE rows: lower is better.", "80%")}
+<p>The detectors catch <b>single-transaction anomalies almost perfectly</b> (S3 burst, S4 new beneficiary, S5 new device, S10 impossible travel, S11 shared device: 94–100% for OC-SVM/autoencoder). They catch the <b>network scenarios only partly</b> (S6 structuring 61–78%, S7 layering 62%, S8 mule 40%, S9 ring hub 68–76%), because those frauds are built to look normal one transaction at a time. They <b>miss the S2 high-value spike</b> (≤ 15%): after log-scaling, a large but plausible amount is not far from normal, while XGBoost catches 80% because it learns the interaction with the sender's history.</p>
+<h3>Complementarity with the supervised model</h3>
+{fig("unsup_09_complementarity", f"XGBoost misses {compl['xgb_missed']} of {compl['test_frauds']} test frauds (mostly S7 layering and S2 high-value spikes). Each strong detector recovers {compl['caught_by']['autoencoder']} of them.", "62%")}
+<p>The rank correlation between the detector scores and the XGBoost probability is only ≈ {uan['spearman_vs_xgb']['autoencoder']:.1f}, so the two carry different information. This is the evidence for including the <b>anomaly percentile</b> as a separate component of the Phase 7 risk score (its weight will be chosen on validation).</p>
+<h2>The autoencoder and its ONNX export</h2>
+{fig("unsup_08_autoencoder", f"Left: training and validation loss with early stopping ({uan['ae_epochs']} epochs; best weights restored). Right: reconstruction error by label on the test set. Most fraud and BORDERLINE rows sit beyond the p95 threshold; the rest reconstruct like legitimate data.")}
+<ul>
+<li>Training used Adam (learning rate 10⁻³, weight decay 10⁻⁵), batch 128, mean-squared-error loss, and early stopping (patience 20) on the legitimate validation rows. Train and validation loss stay close, so there's no overfitting.</li>
+<li><b>ONNX export</b> (opset 17, dynamic batch size; the graph returns both the reconstruction and the per-row error, D-027): a <b>{upar['onnx_bytes'] // 1024} KB</b> file. Maximum difference from PyTorch on {upar['rows']:,} test rows: <b>{upar['max_abs_diff_error']:.1e}</b> (acceptance ≤ 1 × 10⁻⁵).</li>
+<li><b>Why it matters for CCT:</b> the serving container needs only <code>onnxruntime</code> (~50 MB), not PyTorch (several hundred MB). That keeps the ML service within Render's ~512 MB free tier, and the model becomes framework-independent.</li>
+</ul>
+<h2>PaySim scale track</h2>
+{fig("unsup_10_paysim_if", "Fully unsupervised Isolation Forest on 2.77 M PaySim TRANSFER/CASH_OUT rows. Two engineered balance-error features raise PR-AUC from 0.34 to 0.49.")}
+{paysim_table()}
+<p>Polars filters 6.36 M rows to {ups['rows_scored']:,} and builds the features lazily in about a second (cached file); the raw CSV never enters pandas. The forest is fitted on a 250,000-row random sample <b>without labels</b> and then scores every row, using about {ups['peak_rss_mb']/1024:.1f} GB peak memory on one laptop. Against the {pct(ups['fraud_rate'],2)} fraud rate, PR-AUC {f3(ups['feature_sets']['raw+balance_error']['pr_auc'])} is over 100× the no-skill level. The two engineered columns add +{ups['feature_sets']['raw+balance_error']['pr_auc'] - ups['feature_sets']['raw']['pr_auc']:.2f} PR-AUC, more than any model choice. PaySim has no device, location or beneficiary fields, so this track demonstrates <i>scale</i>, not transfer to the India data (D-006).</p>
+<p><b>Answer to RQ6:</b> detectors trained only on legitimate data are useful but clearly weaker than supervised learning (PR-AUC ≈ 0.55 vs {best['test_pr_auc']:.3f}). They excel at single-transaction anomalies, partly catch organised fraud, miss "plausible-amount" fraud, and cannot tell unusual-but-legitimate (BORDERLINE) from fraud. Their value is as a <b>complementary signal</b> and as a safety net for fraud patterns not yet in the labels.</p>
+</section>
+""")
+
+# 13 phase 7
+add(f"""
+<section>
+<h1>Phase 7: tuning, ensembles, calibration, risk score and explanations</h1>
+<p>Phase 5 compared models with default settings. Phase 7 turns the best of them into a <b>production model</b>: it tunes hyperparameters, studies bias and variance, tries a stacking ensemble, calibrates the probabilities, converts them into a 0–100 risk score with tiers, and explains every prediction.</p>
+<h2>Protocol</h2>
+{table([
+ ["Train (6,000 rows)", "hyperparameter search with 5-fold stratified cross-validation (PR-AUC); learning curves; stacking and calibration fit; fraud rates of the network flags"],
+ ["Validation (2,000)", "choice of the production model; decision threshold; risk-score weights and tier cut-offs; permutation importance"],
+ ["Test (2,000)", "scored once at the end for every final candidate; nothing is chosen on it"],
+ ["Imbalance", "class weights for the tree models, no resampling for KNN/MLP (D-020: SMOTE never helped in Phase 5)"],
+], ["Split", "Used for"], "small", widths=["20%", "80%"])}
+<h2>Hyperparameter tuning</h2>
+{fig("final_01_tuning", "Cross-validated PR-AUC before (hollow) and after (filled) tuning, on the same five folds, so the gains are paired comparisons.", "88%")}
+{tuning_table()}
+<p><b>Grid search</b> suits small, discrete spaces (the tree's depth, leaf size and split criterion; KNN's k, weighting and distance). <b>Randomized search</b> samples large or continuous spaces at a fixed budget: 20 XGBoost draws took about 30 seconds. Four of five models improve significantly. The decision tree gains most because the defaults overfit: the search chooses 40 rows per leaf. Tuned XGBoost uses many small boosting steps (learning rate ≈ 0.024, ~465 trees).</p>
+<h2>Bias and variance</h2>
+{fig("final_02_bias_variance", "Left: decision-tree depth. Shallow trees underfit (both scores low); beyond depth 8 the training score keeps rising while the held-out score stays flat (overfitting). Middle and right: learning curves for the tuned tree and the tuned XGBoost.")}
+<p>XGBoost fits its training folds perfectly (high variance), yet its cross-validated score still rises with more data (0.78 at 500 rows → 0.91 at 4,800), so more data would still help. The tuned tree has a smaller gap but a lower ceiling (≈ 0.85): the bias–variance trade-off in one picture.</p>
+<h2>Stacking and calibration</h2>
+<p><b>Stacking</b> combines the tuned Random Forest, XGBoost and MLP through a logistic-regression meta-learner trained on out-of-fold probabilities. It reached validation PR-AUC {f3(fcomp.loc['stack_uncalibrated','val_pr_auc'])} vs {f3(fcomp.loc['xgboost','val_pr_auc'])} for tuned XGBoost alone. The meta-learner relies mostly on the forest (coefficient {fs7['stack_meta_weights']['random_forest']:.1f}) and XGBoost ({fs7['stack_meta_weights']['xgboost']:.1f}); their errors are highly correlated, so combining them adds little. <b>An ensemble is not automatically better</b>, and this negative result is worth stating.</p>
+{fig("final_03_calibration", "Reliability diagrams on validation. Isotonic calibration moves predicted probabilities onto the diagonal; for XGBoost the expected calibration error falls from 0.014 to 0.005.")}
+<p><b>Isotonic calibration</b> (learned on out-of-fold predictions, one refitted model kept, D-029) makes a predicted 30% mean roughly 30% fraud, which the 0–100 score needs. It costs about 0.01 PR-AUC because the isotonic step function creates ties. The <b>production model</b> is the better calibrated candidate on validation: calibrated XGBoost (D-031).</p>
+<h2>Final test results (scored once)</h2>
+{final_table()}
+{fig("final_04_test_comparison", "Test PR-AUC for every final candidate, with the Phase 5 default XGBoost for reference. The production model was chosen on validation, not on this chart.", "88%")}
+<p><b>Answer to RQ4:</b> XGBoost is the best classifier. Tuning lifts test F1 from {best['test_f1']:.3f} to {FT['test_f1']:.3f} (precision {FT['test_precision']:.2f}, recall {FT['test_recall']:.2f}: {int(FT['test_tp'])} of {int(FT['test_tp']+FT['test_fn'])} frauds caught with {int(FT['test_fp'])} false alarms out of 1,730 non-fraud rows). The saved artifact is {fs7['artifact_sizes_mb']['production_model.joblib']} MB; reloading it reproduces the test metrics exactly (an automated test).</p>
+<h2>The 0–100 risk score</h2>
+<p><code>risk = 100 × ({RSC['weights']['model']:.2f} × P(fraud) + {RSC['weights']['anomaly']:.2f} × anomaly percentile + {RSC['weights']['graph']:.2f} × graph risk)</code>, then overrides. The weights come from a grid over all combinations summing to 1, maximising validation PR-AUC. The anomaly percentile is the Phase 6 autoencoder's. Graph risk is the training fraud rate of the strongest network red flag that fires (pass-through {pct(RSC['flag_rates']['PASS_THROUGH'],0)}, quick inflow {pct(RSC['flag_rates']['QUICK_INFLOW'],0)}, hub receiver {pct(RSC['flag_rates']['HUB_RECEIVER'],0)}, burst sender {pct(RSC['flag_rates']['BURST_SENDER'],0)}, shared device {pct(RSC['flag_rates']['SHARED_DEVICE'],0)}; D-030). The two extra components raise PR-AUC slightly (validation {RSC['model_only_val_pr_auc']:.3f} → {RSC['weights_val_pr_auc']:.3f}; test {FT['test_pr_auc']:.3f} → {fs7['risk_score_test']['final']['pr_auc']:.3f}) and make the score easier to explain.</p>
+{table([
+ ["CRITICAL", f"≥ {RSC['cutoffs']['CRITICAL']:.0f}", "lowest score with ≥ 95% precision on validation", "block / escalate immediately"],
+ ["HIGH", f"≥ {RSC['cutoffs']['HIGH']:.0f}", "maximum-F1 threshold on validation", "alert an analyst"],
+ ["MEDIUM", f"≥ {RSC['cutoffs']['MEDIUM']:.0f}", "keeps 98% of validation fraud at MEDIUM or above", "review queue"],
+ ["LOW", f"< {RSC['cutoffs']['MEDIUM']:.0f}", "—", "allow"],
+], ["Tier", "Score", "How the cut-off was chosen", "Intended action"], "small", widths=["14%", "12%", "44%", "30%"])}
+<p><b>Overrides:</b> a sanctions match ≥ 90 forces CRITICAL; a PEP customer is lifted to at least MEDIUM; the structuring rule (near-threshold amount + burst sender) adds 10 points. On the test set the structuring rule fired {fs7['risk_overrides_test']['structuring']} times and {fs7['risk_overrides_test']['pep_floor']} PEP customers were lifted.</p>
+{fig("final_06_risk_score", "Left: share of each label scoring at or above each value, with the tier cut-offs. Right: tier assignment by true label on the test set.")}
+{tier_table()}
+<p>{pct(ftiers.loc['FRAUDULENT','CRITICAL_share'],0)} of fraud is CRITICAL and {pct(ftiers.loc['FRAUDULENT','HIGH_share']+ftiers.loc['FRAUDULENT','CRITICAL_share'],0)} is HIGH or above, while {pct(ftiers.loc['LEGITIMATE','LOW_share'],0)} of legitimate payments are LOW. The 98%-recall review band costs {pct(ftiers.loc['LEGITIMATE','MEDIUM_share'],0)} of legitimate payments in MEDIUM: a policy choice that a bank would set by reviewer capacity (D-032). Most BORDERLINE cases land in HIGH, where a human should look.</p>
+<h2>Explanations</h2>
+{fig("final_07_importance", "Global importance: mean absolute SHAP value for the tuned XGBoost (left) and permutation importance for the production model (right). Both rank amount, channel, payee recency, inflow timing and distance from home highest.")}
+{fig("final_08_shap_beeswarm", "Direction of each feature's effect: red = high feature value, blue = low. Large amounts, UPI, new payees, distant locations, recent inflows and sender bursts push towards fraud.", "80%")}
+{fig("final_09_local_explanations", "Per-transaction explanations, as the API will return them. Left: a mule pass-through fraud (money arrived 195 s earlier and was forwarded). Right: a BORDERLINE new-device payment where every signal is suspicious, the reason BORDERLINE belongs in human review.")}
+<p>At serve time, XGBoost's built-in <code>pred_contribs</code> computes the same TreeSHAP values as the <code>shap</code> library (maximum difference {fs7['explanations']['parity_native_vs_shap']['max_abs_diff_vs_shap']:.1f} on 2,000 rows), so the service explains every score without installing <code>shap</code>, which saves memory on the 512 MB server. The amount's dominance partly reflects the synthetic generator (Chapter 5).</p>
+</section>
+""")
+
+# 14 phase 8
+add(f"""
+<section>
+<h1>Phase 8: cloud services and containers</h1>
+<p>Phase 8 turns the trained models into a <b>running service</b>: a public REST API backed by four domain microservices, packaged as Docker containers, measured for latency, memory and load. The cloud deployment itself (Render + Vercel, and the Cloud Run comparison) is Phase 10; everything here runs locally with Docker Compose and is ready to deploy.</p>
+<h2>Architecture</h2>
+{flow([("Client / React SPA", "HTTPS + CORS"), ("api-gateway :8000", "public · validation · orchestration · risk score · CORS · /metrics"), [("ml-service :8001", "calibrated XGBoost · TreeSHAP reasons · ONNX autoencoder · K-Means"), ("mining-service :8002", "association rules · live rule matching")], [("graph-service :8003", "account metrics · ego networks · graph risk"), ("sanctions-service :8004", "fuzzy OFAC + UN screening")]])}
+<p>The gateway is the only public service. For each score it calls the four domain services <b>in parallel</b>, so latency is the slowest call, not the sum. All services are <b>stateless</b>: they load a versioned artifact bundle at start-up and keep no per-request state, so any replica can serve any request.</p>
+{table([
+ ["Microservices (remote)", "FINSIGHT_SERVICE_MODE=remote", "5 containers talking HTTP/JSON; each can be deployed and scaled on its own (Docker Compose, optional 5-service Render Blueprint)"],
+ ["Modular monolith (inprocess)", "FINSIGHT_SERVICE_MODE=inprocess", "the gateway imports the four modules directly: one container, one cold start (the default free Render deployment)"],
+], ["Mode", "Setting", "What it means"], "small", widths=["22%", "28%", "50%"])}
+<p>Both modes run the <b>same code</b>. An automated test sends the same transactions through both and checks that every score, tier, reason and fired rule is identical.</p>
+<h2>REST API (OpenAPI / Swagger at /docs)</h2>
+{table([
+ ["POST /score-transaction", "risk 0–100, tier, component scores, top reasons (TreeSHAP), fired rules, network flags, cluster, sanctions, per-service timings"],
+ ["POST /anomaly-score", "Isolation Forest, One-class SVM and autoencoder scores with percentiles vs legitimate traffic"],
+ ["GET /patterns, /patterns/benchmark", "association rules (filter by consequent, confidence, lift, network items) and the Apriori vs FP-Growth benchmark"],
+ ["GET /cluster/{{tx_id}} · /network/{{account_id}}", "K-Means cluster profile · account metrics, activity and ego network"],
+ ["GET /sanctions-check?name=", "fuzzy OFAC + UN matches with scores"],
+ ["GET /models/compare", "Phase 5 grid, Phase 7 final models and tuning, Phase 6 detectors"],
+ ["GET /transactions, /transactions/{{tx_id}}, /overview", "filterable transaction list, full profile, dataset KPIs (for the dashboard)"],
+ ["GET /health, /metrics, /platform/status", "liveness, per-route latency percentiles and memory, health of every downstream service"],
 ], ["Endpoint", "Returns"], "small", widths=["40%", "60%"])}
-<p>All services are stateless FastAPI apps with Pydantic schemas and auto-generated OpenAPI docs, in slim, non-root Docker images. Target: p95 &lt; 200 ms for scoring when warm.</p>
-<h2>Phase 9: dashboard (React on Vercel)</h2>
-<p>Nine pages calling only the gateway: Executive overview · Data quality · Transaction explorer · Pattern mining lab · ML experiments lab · Clustering &amp; anomaly · Network explorer · Risk scorer (submit a transaction, see score, tier, explanation, rules, sanctions) · Platform (service health, latency, cold-start measurements).</p>
+<p><b>Scoring input (D-033):</b> a stored transaction (its point-in-time features, exactly what the model was evaluated on), the same transaction with <b>what-if overrides</b> (e.g. a different amount or a new device; dependent columns are recomputed), or a complete feature row. Computing network features for a brand-new transaction would need a live streaming feature store, which is out of scope. Errors are mapped to HTTP codes: unknown ID → 404, invalid input → 422, downstream failure → 502.</p>
+<h2>Containers and the model registry</h2>
+{table([
+ ["One multi-stage Dockerfile", "build args SERVICE (which service) and REQS (dependency set); stages: dependencies → artifact bundle → slim runtime"],
+ ["Slim, non-root runtime", "python:3.12-slim, a dedicated user (uid 10001), no compilers or pip cache, a HEALTHCHECK, $PORT from the platform"],
+ ["Two dependency sets", f"base (FastAPI, pandas, pyarrow, RapidFuzz): {IMG['finsight/gateway:local']:.0f} MB; ml (+ scikit-learn, XGBoost, ONNX Runtime): {IMG['finsight/ml:local']:.0f} MB (uncompressed; pyarrow is the largest single part at 163 MB)"],
+ ["Artifact bundle = model registry", f"27 files, {plat['bundle']['total_mb']} MB ({plat['bundle']['version']}), sha256 per file in manifest.json; published as a GitHub Release and downloaded during docker build, so each image is immutable and versioned"],
+ ["12-factor configuration", "all settings from environment variables (mode, URLs, internal key, CORS origins, timeouts)"],
+], ["Practice", "Implementation"], "small", widths=["26%", "74%"])}
+<h2>Security and observability</h2>
+<ul>
+<li><b>Network isolation + shared secret:</b> in Compose only the gateway publishes a port. The internal services are unreachable from the host, and they reject calls without the <code>X-Internal-Key</code> header (401). On Render's free tier, which has no private network, the key is the only barrier, so it is mandatory there.</li>
+<li><b>CORS allow-list:</b> only the configured dashboard origins can call the API from a browser (tested: a foreign origin gets no CORS header).</li>
+<li><b>Observability:</b> every request gets an <code>X-Request-ID</code> that is forwarded to downstream services and appears in every structured JSON log line. <code>/metrics</code> reports per-route request counts, errors and p50/p95/p99 latency. Responses carry <code>X-Served-By</code> (which replica answered) and <code>Server-Timing</code>.</li>
+</ul>
+<h2>Measurements (Docker Compose on one 8-core laptop)</h2>
+{fig("platform_01_phase8", "Left: warm single-client latency in both modes, far below the 200 ms target. Middle: Locust load tests in remote mode. Right: process memory per container against Render's 512 MB free instance.")}
+{table([
+ ["Warm /score-transaction, 1 client (p50 / p95)", f"{PW['compose-inprocess']['client_p50_ms']:.0f} / {PW['compose-inprocess']['client_p95_ms']:.0f} ms", f"{PW['compose-remote']['client_p50_ms']:.0f} / {PW['compose-remote']['client_p95_ms']:.0f} ms"],
+ ["Memory (process RSS)", f"{plat['warm']['compose-inprocess']['rss_mb']['gateway']:.0f} MB (one container)", f"gateway {plat['warm']['compose-remote']['rss_mb']['gateway']:.0f} + ml {plat['warm']['compose-remote']['rss_mb']['ml']:.0f} + 3 × ~165 MB"],
+ ["Start-up to healthy", f"{plat['startup_s']['inprocess_container']:.0f} s", f"~{plat['startup_s']['remote_stack_all_healthy']:.0f} s for the whole stack"],
+], ["Metric", "Inprocess (monolith)", "Remote (5 services)"], "small", widths=["40%", "30%", "30%"])}
+{table([[r["scenario"], f"{r['rps_total']:.0f}", f"{r['p50_ms']:.0f}", f"{r['p95_ms']:.0f}", f"{r['p99_ms']:.0f}", r["failures"]] for r in PL.values()],
+       ["Load test (remote mode)", "Requests/s", "p50 ms", "p95 ms", "p99 ms", "Errors"], "num small")}
+<ul>
+<li><b>Microservices vs monolith:</b> on one machine the two modes are equally fast for a single client, because the parallel fan-out hides the extra HTTP hops. The monolith needs about half the total memory, which is why it is the free-tier default.</li>
+<li><b>Horizontal scaling:</b> <code>docker compose up --scale ml-service=3</code> starts two more ML replicas behind the same DNS name, and each replica's request counter shows that the traffic is shared. Median latency under 30 users fell from {PL['remote_ml1']['p50_ms']:.0f} to {PL['remote_ml3']['p50_ms']:.0f} ms. The remaining limit is the gateway and the load generator sharing the same 8 cores.</li>
+<li><b>Performance engineering from measurements (D-034, D-035):</b> profiling showed that the sklearn preprocessing objects cost ~10 ms per single-row call, four times per score. Compiling them to numpy (with exact, tested equality) cut warm latency from 138 to 21 ms and memory from 460 to 325 MB. The load test then showed the sanctions service at 96% CPU (a fuzzy scan of 27,000 names per score); an LRU cache brought it to 17%. It also showed pooled connections pinning traffic to one replica, which a short keep-alive fixed.</li>
+</ul>
+<p>Acceptance criteria met: all services healthy under <code>docker compose up</code>; warm p95 {PW['compose-remote']['client_p95_ms']:.0f} ms (target &lt; 200 ms); the single container at {plat['warm']['compose-inprocess']['rss_mb']['gateway']:.0f} MB (target &lt; 450 MB). {N_TESTS} automated tests pass, including 12 API tests.</p>
+</section>
+""")
+
+# 15 phase 9
+add(f"""
+<section>
+<h1>Phase 9: the web dashboard</h1>
+<p>The dashboard is how examiners and users see the project. It is a <b>React single-page application</b> (React 18, Vite, TypeScript, Plotly.js) that holds no data of its own: every number on every page comes live from the API gateway built in Phase 8. It builds to static files, so it can be served from Vercel's global CDN with no server.</p>
+{table([
+ ["Executive overview", "KPIs, daily volume (fraud vs not), fraud rate by channel, scenarios, how a score is built, key findings", "All"],
+ ["Data quality", "table completeness, referential integrity, leakage scan, RQ1 feature ranking, behaviour flags, sanctions threshold sweep, cleaning log", "DMW"],
+ ["Transaction explorer", "filter by label, scenario, channel, amount, account; profile of the selected payment; jump to scoring or the network", "DMW"],
+ ["Pattern mining lab", "all rules (support × confidence × lift), filterable rule table, Apriori vs FP-Growth runtime and memory, item definitions", "DMW"],
+ ["ML experiments lab", "A/B/C feature groups per dataset version, test PR-AUC heatmap, tuning gains, final candidates, SHAP importance, per-scenario recall, learning curves", "ML"],
+ ["Clustering & anomaly", "2-D PCA of 4,000 transactions coloured by label or cluster, cluster profiles, K selection curves, anomaly detector comparison", "ML"],
+ ["Network explorer", "accounts ranked by PageRank or degree, ego network (senders left, receivers right, fraud edges highlighted), counterparties", "ML + DMW"],
+ ["Risk scorer", "score any transaction; what-if changes (amount, new device, new payee, distance, burst); score, tier, components, SHAP reasons, fired rules, network flags, cluster, sanctions, per-service timings", "All"],
+ ["Platform", "service health, memory and latency, per-route percentiles, bundle version, wake-up time of this visit, a live latency probe, recorded load tests and image sizes", "CCT"],
+], ["Page", "What it shows", "Subject"], "small", widths=["20%", "66%", "14%"])}
+{fig("dashboard_08_risk_scorer", "Risk scorer: a mule pass-through fraud scores 100 (CRITICAL). The reasons are native TreeSHAP values; the components, network red flags, fired rules, cluster, sanctions result and per-service timings come from the four services.", "66%")}
+{fig("dashboard_01_overview", "Executive overview.", "66%")}
+{fig("dashboard_05_ml_lab", "ML experiments lab: feature-group ablation, test heatmap, tuning gains and final candidates (switchable between dataset v1.1 and the v1.0 control).", "66%")}
+{fig("dashboard_04_patterns", "Pattern mining lab: every productive rule, the Apriori vs FP-Growth benchmark, and a filterable rule table with network items outlined.", "66%")}
+{fig("dashboard_06_clusters", "Clustering and anomaly: PCA scatter (click a point to score it), K-Means cluster profiles, K selection curves and the detector comparison.", "66%")}
+{fig("dashboard_07_network", "Network explorer: a fan-in hub receiving fraudulent payments (orange edges) from many senders.", "66%")}
+{fig("dashboard_09_platform", "Platform page: live service status and latency, plus the recorded Phase 8 measurements.", "66%")}
+{fig("dashboard_02_data_quality", "Data quality page: audit tables, leakage scan (the alert flag is marked SUSPECT), feature ranking and the sanctions threshold curve.", "66%")}
+{fig("dashboard_03_transactions", "Transaction explorer with filters and paging.", "66%")}
+<h2>Design decisions (D-036)</h2>
+<ul>
+<li><b>Cold starts handled in the interface.</b> Before rendering, the app polls <code>/health</code> and shows "Waking the backend…" with a timer, because Render's free tier sleeps after 15 minutes. The first page load is only about 60 KB (gzipped); the 1.4 MB charting library loads with the first chart, so the waiting screen appears instantly. The Platform page reports how long this visit's wake-up took.</li>
+<li><b>One colour language.</b> The same validated, colour-blind-safe palette as the report figures: legitimate blue, fraudulent orange, borderline aqua, everywhere. Dark mode uses its own stepped colours (not an automatic inversion). Risk tiers always show an icon and a word, never colour alone. Where a page already uses hues for labels and clusters, other series switch to neutral inks so no colour means two things.</li>
+<li><b>Interactive, not decorative.</b> Every chart has hover tooltips, the PCA scatter opens the scorer for the clicked transaction, the network graph re-centres on the clicked account, and tables are keyboard-navigable.</li>
+<li><b>Static hosting.</b> <code>vercel.json</code> rewrites every route to <code>index.html</code> (client-side routing), caches hashed assets for a year, and adds security headers. The API address is a build-time environment variable (<code>VITE_API_BASE_URL</code>), and the API only accepts browser calls from origins on its CORS allow-list.</li>
+<li><b>Checked like the report figures.</b> Every page was rendered in a headless browser (light, dark and a 390 px phone width) and inspected; overlapping labels, colour clashes and a crowded network layout were fixed before sign-off.</li>
+</ul>
+<p>Four API endpoints were added for the dashboard (<code>/clusters</code>, <code>/accounts</code>, <code>/data-quality</code>, <code>/platform/benchmarks</code>), with tests in both service modes. The bundle now includes a 2-D PCA embedding for the scatter plot, and large responses are gzip-compressed.</p>
+</section>
+""")
+
+# 16 planned
+add(f"""
+<section>
+<h1>Planned work: phase 10 (deployment)</h1>
+<p class="callout">Phase 10 needs the team's GitHub, Render and Vercel accounts (and optionally a Google Cloud billing account for the comparison). Everything it deploys already exists and runs locally; the measurements below will be added when it is done.</p>
 <h2>Phase 10: deployment on Vercel + Render</h2>
 {table([
  ["React dashboard (static)", "Vercel (Hobby, free)", "Global CDN, Git-push deploys, preview URL per pull request. Streamlit can't run on Vercel, hence React."],
  ["FastAPI services (Docker)", "Render web services (free)", "Native Docker builds from GitHub, managed HTTPS, Blueprint IaC (render.yaml)"],
- ["Model artifacts (~26 MB)", "GitHub Releases", "Versioned 'model registry'; downloaded during docker build into an immutable image"],
+ ["Model artifacts (4.4 MB bundle)", "GitHub Releases", "Versioned 'model registry' (built in Phase 8); downloaded during docker build into an immutable image"],
  ["Training pipeline", "Local / Compose", "Needs the 1.8 GB dataset (not in Git); publishes artifacts to a release"],
  ["CI", "GitHub Actions", "Tests on every push; Render and Vercel auto-deploy from main"],
+ ["Comparison target (same image)", "Google Cloud Run + Artifact Registry (asia-south1)", "Portability experiment: one Docker image, two clouds, measured with the same script (D-028)"],
 ], ["Component", "Platform", "Reason"], "small", widths=["24%", "24%", "52%"])}
+<h3>Why this is cloud computing (and why not only AWS / GCP / Azure)</h3>
+<p>Cloud computing is defined by its <b>service model</b>, not by a particular vendor. The NIST definition (SP 800-145) lists five essential characteristics; the deployment has all of them:</p>
+{table([
+ ["On-demand self-service", "Deploys are triggered by a Git push or the render.yaml Blueprint; no hardware, no tickets"],
+ ["Broad network access", "Public HTTPS API; the dashboard is served from Vercel's global edge CDN"],
+ ["Resource pooling", "Multi-tenant container hosts (Render, Cloud Run) and a shared edge network (Vercel)"],
+ ["Rapid elasticity", "Scale-to-zero when idle and wake on request; horizontal scaling (Compose --scale, Cloud Run autoscaling)"],
+ ["Measured service", "Metered instance-hours (Render), vCPU-seconds and requests (Cloud Run), bandwidth (Vercel); free-tier quotas"],
+], ["NIST characteristic", "FinSight implementation"], "small", widths=["28%", "72%"])}
+{table([
+ ["IaaS", "Virtual machines, networks, disks", "Not used directly; Render, Vercel and Cloud Run run on hyperscaler IaaS underneath. Discussed as the VM-vs-container comparison"],
+ ["PaaS / CaaS", "Run my container or app; platform handles servers, TLS, scaling", "Render web services; Google Cloud Run; Vercel (static hosting + CDN)"],
+ ["FaaS (serverless functions)", "Run a function per request", "Available on Vercel; not needed (the API is a container), discussed as an alternative"],
+ ["SaaS", "Finished software over the web", "The FinSight scoring API and dashboard themselves; GitHub (code, CI, releases)"],
+], ["Service model", "Meaning", "In FinSight"], "small", widths=["16%", "34%", "50%"])}
+<p><b>Why Render + Vercel as the primary platform:</b> both have free tiers without a credit card, so every team member can deploy and demo. Platform services let the project spend its effort on architecture (microservices, REST, containers, Infrastructure as Code, CI/CD) rather than server administration. The free-tier limits (scale-to-zero cold starts, no private networking, ~512 MB RAM, a 30 s proxy timeout) are real cloud-engineering constraints, and the design responses above are part of the CCT contribution.</p>
+<p><b>Portability experiment (D-028):</b> because every service is a standard Docker image, the same backend image is also deployed to <b>Google Cloud Run</b> (Mumbai region, scale-to-zero) via Artifact Registry. Both deployments are measured with the same script (cold start, warm p50/p95 latency, memory, image size) and their cost models are compared (Render's instance-hours vs Cloud Run's per-request vCPU-seconds). "One image, two clouds" shows that the architecture is not locked to any vendor, and it brings a hyperscaler into the evaluation.</p>
 <h3>Free-tier constraints and design responses</h3>
 {table([
  ["Render free web services can't receive private-network traffic", "Inter-service calls use HTTPS + a shared secret header (X-Internal-Key)"],
@@ -684,7 +993,11 @@ add(f"""
  ["Similarity measures", "fuzzy string similarity (RapidFuzz); KNN distances", "✔"],
  ["Frequent itemsets, Apriori, FP-Growth", "benchmark on two item universes + PaySim", "✔"], ["Closed and maximal itemsets", "closed filter; FP-Max", "✔"],
  ["Association rules and interestingness", "support, confidence, lift, leverage, conviction; productive rules; emerging patterns", "✔"],
- ["Classification and evaluation", "DT, NB, KNN with PR-AUC, F1, ROC", "✔"], ["IEEE-CIS missingness profiling", "transaction ⋈ identity", "planned"],
+ ["Classification and evaluation", "DT, NB, KNN with PR-AUC, F1, ROC", "✔"],
+ ["Cluster analysis", "K-Means (elbow, silhouette, Davies–Bouldin), DBSCAN, cluster profiling, ARI", "✔"],
+ ["Outlier analysis", "DBSCAN noise; Isolation Forest, One-class SVM, autoencoder", "✔"],
+ ["Big-data wrangling", "Polars lazy pipelines on 6.36M PaySim rows (mining + anomaly scale tracks)", "✔"],
+ ["IEEE-CIS missingness profiling", "transaction ⋈ identity", "planned"],
 ], ["Topic", "Where in FinSight", "Status"], "small", widths=["36%", "52%", "12%"])}
 <h2>Machine Learning</h2>
 {table([
@@ -693,24 +1006,30 @@ add(f"""
  ["Statistical model comparison", "paired t-test + Wilcoxon on identical folds", "✔"], ["Class imbalance", "SMOTE vs class weights vs none", "✔"],
  ["Ensembles (bagging, boosting)", "Random Forest, XGBoost", "✔"], ["Neural network classifier", "MLP", "✔"],
  ["Evaluation metrics", "PR-AUC, ROC-AUC, F1, precision/recall, per-class, confusion", "✔"], ["Interpretability", "decision tree visualisation", "✔"],
- ["Unsupervised learning", "K-Means, DBSCAN, PCA, t-SNE", "planned (6)"], ["Anomaly detection", "Isolation Forest, One-class SVM, autoencoder", "planned (6)"],
- ["Hyperparameter tuning, bias–variance", "Grid/Random search, learning curves", "planned (7)"], ["Stacking and calibration", "RF + XGB + MLP → LR; isotonic", "planned (7)"],
- ["Explainability", "SHAP global + local", "planned (7)"], ["Model persistence / serving", "joblib (done), ONNX (planned)", "partial"],
+ ["Unsupervised learning", "K-Means, DBSCAN, PCA, t-SNE", "✔"], ["Anomaly detection", "Isolation Forest, One-class SVM, autoencoder (legit-only training)", "✔"],
+ ["Neural network (unsupervised)", "PyTorch autoencoder with early stopping", "✔"],
+ ["Hyperparameter tuning, bias–variance", "Grid/Randomized search with CV; validation and learning curves", "✔"], ["Stacking and calibration", "RF + XGB + MLP → LR; isotonic calibration, reliability, Brier/ECE", "✔"],
+ ["Explainability", "SHAP global + local; permutation importance; native TreeSHAP for serving", "✔"],
+ ["Decision thresholds and cost of errors", "validation-chosen tiers (precision / recall / F1 targets), review band", "✔"], ["Model persistence / serving", "joblib; ONNX autoencoder with parity test", "✔"],
 ], ["Topic", "Where in FinSight", "Status"], "small", widths=["36%", "52%", "12%"])}
 <h2>Cloud Computing &amp; Technology</h2>
 {table([
- ["Service models (IaaS / PaaS / SaaS / FaaS)", "Render = container PaaS; Vercel = frontend PaaS + CDN; FinSight API as SaaS", "designed"],
- ["Virtualisation and containers", "Dockerfile per service; VM vs container comparison", "planned (8)"],
- ["Microservices and API gateway", "5 FastAPI services; inprocess vs remote modes", "planned (8)"],
- ["REST and OpenAPI", "11 endpoints, Pydantic schemas, Swagger UI", "planned (8)"],
- ["Orchestration", "Docker Compose (+ horizontal scaling demo); conceptual Kubernetes", "planned (8)"],
- ["CDN / edge", "static SPA served from Vercel's edge network", "planned (9–10)"],
+ ["Cloud definition (NIST 5 characteristics)", "self-service deploys, HTTPS + CDN, pooled hosts, scale-to-zero, metered free tiers (Ch. 16)", "designed"],
+ ["Service models (IaaS / PaaS / SaaS / FaaS)", "Render + Cloud Run = container PaaS; Vercel = frontend PaaS + CDN; FinSight API as SaaS", "designed"],
+ ["Multi-cloud / portability, vendor lock-in", "same Docker image on Render and Google Cloud Run, measured side by side", "planned (10)"],
+ ["Virtualisation and containers", "multi-stage Dockerfile for 5 services; slim non-root images; image size measured", "✔"],
+ ["Microservices and API gateway", "gateway + 4 services; inprocess vs remote modes, identical results, measured", "✔"],
+ ["REST and OpenAPI", "14 public endpoints, Pydantic schemas, Swagger UI at /docs", "✔"],
+ ["Orchestration", "Docker Compose with health checks, depends_on, --scale ml-service=3; conceptual Kubernetes", "✔ (Compose)"],
+ ["Performance and load testing", "profiling-driven optimisation; Locust load tests; p50/p95/p99", "✔"],
+ ["CDN / edge", "static SPA (60 KB first load, hashed assets cached a year) for Vercel's edge network", "✔ built; deploy in 10"],
  ["CI/CD, GitOps", "GitHub Actions tests; auto-deploy on push; preview deployments", "planned (10)"],
  ["Infrastructure as Code", "render.yaml Blueprint, vercel.json, docker-compose.yml", "planned (10)"],
- ["Artifact registry / storage", "GitHub Releases model registry; fsspec storage abstraction", "planned (8)"],
+ ["Artifact registry / storage", "versioned, checksummed bundle; GitHub Release publishing script; fsspec storage layer", "✔ (publish in 10)"],
+ ["Portable model format", "ONNX autoencoder served with onnxruntime (no PyTorch in the image)", "✔ (6)"],
  ["Elasticity, scale-to-zero, cost", "Render spin-down vs cold start; locust load test", "planned (10)"],
- ["Security", "HTTPS, CORS allow-list, internal shared key, non-root images, env secrets", "planned (8–10)"],
- ["Observability", "JSON logs, request IDs, /metrics, Platform page", "planned (8–9)"],
+ ["Security", "internal shared key (401 tested), private network, CORS allow-list (tested), non-root images, env secrets; HTTPS on the platforms", "✔ (HTTPS in 10)"],
+ ["Observability", "structured JSON logs, request-ID propagation, /metrics percentiles, /platform/status", "✔ (incl. Platform page)"],
  ["Cloud-native principles", "12-factor configuration, stateless services, immutable images", "designed"],
 ], ["Topic", "Where in FinSight", "Status"], "small", widths=["36%", "50%", "14%"])}
 </section>
@@ -728,6 +1047,11 @@ add(f"""
 <li><b>Interpretable rules are competitive but not best.</b> Productive association rules reach F1 {rb['test']['f1']:.2f} on held-out data vs {best['test_f1']:.2f} for XGBoost. Rules remain valuable as explanations and as a transparent first-line filter.</li>
 <li><b>FP-Growth's advantage is about memory and large searches</b>, not universal speed. Implementation (vectorised vs pure Python) matters as much as asymptotic complexity.</li>
 <li><b>SMOTE is not a default.</b> With threshold tuning, rebalancing added nothing and sometimes hurt.</li>
+<li><b>Tuning helps; ensembling did not.</b> Cross-validated search improved every model and lifted the best model's test F1 from {best['test_f1']:.3f} to {FT['test_f1']:.3f}. Stacking three strong but correlated models added nothing over tuned XGBoost, so the simpler model went to production.</li>
+<li><b>A score needs calibration, tiers and reasons.</b> Isotonic calibration, validation-chosen tier cut-offs and native SHAP explanations turn a classifier into a usable risk score: {pct(ftiers.loc['FRAUDULENT','CRITICAL_share'],0)} of fraud is CRITICAL, {pct(ftiers.loc['LEGITIMATE','LOW_share'],0)} of legitimate payments are LOW, and every score comes with its reasons.</li>
+<li><b>Measure, then optimise.</b> The first working service missed the latency target in practice (138 ms median in-process); profiling located the cost in per-request sklearn overhead, and a tested numpy fast path brought it to 21 ms with identical outputs. The load test found a different bottleneck (sanctions screening), which caching removed.</li>
+<li><b>Without labels you get triage, not detection.</b> Clustering finds interpretable risk groups (bursts, hubs, unusual flows) but with weak structure. Anomaly detectors trained on legitimate data reach PR-AUC ≈ 0.55 vs 0.875 supervised; they add a complementary signal that recovers a quarter of the supervised model's misses.</li>
+<li><b>Anomalous is not the same as fraudulent.</b> Anomaly detectors flag ~80% of BORDERLINE (unusual but legitimate) transactions, the same group the supervised model struggles with.</li>
 <li><b>Label ambiguity is the main remaining error.</b> BORDERLINE cases cause most false positives and are only half-separable even as their own class. A "review" tier is more honest than forcing a binary decision.</li>
 </ol>
 <h2>Limitations and threats to validity</h2>
@@ -737,20 +1061,22 @@ add(f"""
 <li><b>Small per-scenario test counts</b> (16–48 fraud rows per scenario) make scenario-level differences under ~10 points unreliable.</li>
 <li><b>One month of data:</b> the temporal hold-out shows no drift within August, but can't test seasonal or long-term drift.</li>
 <li><b>Global graph features</b> (PageRank, communities) are transductive (computed on the full graph, label-free); velocity features are strictly point-in-time.</li>
-<li><b>Default hyperparameters</b> in Phase 5; tuned results come in Phase 7.</li>
+<li><b>Tuning budget:</b> 20 randomized draws for RF/XGBoost and 10 for the MLP; a larger search could find slightly better settings. Phase 6 detectors use default settings, and their thresholds assume a set of known-legitimate rows to calibrate on.</li>
+<li><b>One split for model choice:</b> the production model, threshold and tiers are chosen on a single 2,000-row validation split; small differences (± 0.01 PR-AUC) between candidates are within noise.</li>
+<li><b>Clustering in 63 dimensions</b> is dominated by distance concentration (silhouette ≤ 0.16); the cluster findings are descriptive, not a validated segmentation.</li>
 </ul>
 <h2>Future work</h2>
-<p>Complete phases 6–10. Beyond the course: graph neural networks over the account graph; streaming scoring (Kafka) with online graph updates; drift monitoring; human-in-the-loop review of BORDERLINE cases; evaluation on real, consented bank data.</p>
+<p>Complete phases 9–10. Beyond the course: graph neural networks over the account graph; streaming scoring (Kafka) with online graph updates; drift monitoring; human-in-the-loop review of BORDERLINE cases; evaluation on real, consented bank data.</p>
 </section>
 """)
 
-# 15 guide
+# 19 guide
 add(f"""
 <section>
 <h1>Guide for report and presentation writers</h1>
 <p>Each outline lists sections or slides with the source chapter and the figure file (in <code>reports/figures/</code>) to use. Keep the colour meaning consistent: blue = legitimate, orange = fraudulent, aqua = borderline.</p>
-<h2>15.1 Data Mining &amp; Wrangling</h2>
-<p><b>Report outline:</b> Introduction (Ch. 2) → Datasets and KDD (Ch. 3–4) → Audit and data quality (Ch. 5–6) → Dataset engineering v1.1 (Ch. 7) → EDA and RQ1 (Ch. 9) → Association mining and RQ2 (Ch. 10) → Rules vs classifiers (Ch. 11 baselines) → Conclusions (Ch. 14).</p>
+<h2>19.1 Data Mining &amp; Wrangling</h2>
+<p><b>Report outline:</b> Introduction (Ch. 2) → Datasets and KDD (Ch. 3–4) → Audit and data quality (Ch. 5–6) → Dataset engineering v1.1 (Ch. 7) → EDA and RQ1 (Ch. 9) → Association mining and RQ2 (Ch. 10) → Rules vs classifiers (Ch. 11 baselines) → Cluster analysis and the PaySim scale track (Ch. 12) → Conclusions (Ch. 18).</p>
 {table([
  ["1", "Title + one-line pitch", "—"], ["2", "Problem: opportunistic vs organised fraud in Indian payments", "—"],
  ["3", "Datasets and the KDD process", "KDD flow (Ch. 4)"], ["4", "Audit: leakage and the missing network", "Ch. 5 table"],
@@ -760,11 +1086,14 @@ add(f"""
  ["9", "Discretisation into items", "Ch. 10 items table"], ["10", "Apriori vs FP-Growth", "mining_01_benchmark, mining_03_paysim_scaling"],
  ["11", "Closed/maximal itemsets", "mining_02_condensed"], ["12", "Top rules (RQ2)", "mining_05_top_rules_v1_1, mining_04_rules_scatter"],
  ["13", "Control: v1.0 vs v1.1 rules", "mining_06_item_share_v10_v11"], ["14", "Rules as a detector vs ML", "mining_07_detector_curve, ml_03_pr_roc_expC"],
- ["15", "Conclusions and limitations", "Ch. 14"],
+ ["15", "Cluster analysis: K-Means profiles + DBSCAN outliers", "unsup_02_cluster_composition, unsup_04_dbscan"],
+ ["16", "Big data: PaySim 6.36M rows with Polars", "mining_03_paysim_scaling, unsup_10_paysim_if"],
+ ["17", "Live: data quality, pattern lab and transaction explorer pages", "dashboard_02_data_quality, dashboard_04_patterns, dashboard_03_transactions (Ch. 15)"],
+ ["18", "Conclusions and limitations", "Ch. 18"],
 ], ["Slide", "Content", "Figure / source"], "small", widths=["8%", "52%", "40%"])}
 <p><b>One-line pitch:</b> "FinSight AI follows the full KDD process across five heterogeneous sources; our audit found label leakage and fraud scenarios that were never encoded in the graph. We fixed and validated that with a seeded augmentation step, then mined behaviour patterns with Apriori and FP-Growth and benchmarked both."</p>
-<h2>15.2 Machine Learning</h2>
-<p><b>Report outline:</b> Introduction and RQs (Ch. 2) → Data and features (Ch. 3, 8, Appendix B) → Protocol (Ch. 11 design) → RQ3 → RQ4 + imbalance → RQ7 + BORDERLINE → robustness and interpretability → planned unsupervised, anomaly, tuning, stacking, SHAP (Ch. 12) → Conclusions.</p>
+<h2>19.2 Machine Learning</h2>
+<p><b>Report outline:</b> Introduction and RQs (Ch. 2) → Data and features (Ch. 3, 8, Appendix B) → Protocol (Ch. 11 design) → RQ3 → RQ4 + imbalance → RQ7 + BORDERLINE → robustness and interpretability → RQ5 clustering and RQ6 anomaly detection (Ch. 12) → tuning, bias–variance, stacking, calibration, risk score, SHAP (Ch. 13) → Conclusions (Ch. 18).</p>
 {table([
  ["1", "Title + pitch", "—"], ["2", "Task: binary fraud detection, 13.5% positives; why PR-AUC", "eda_01_label_overview"],
  ["3", "Feature sets A/B/C (12/30/49)", "Appendix B"], ["4", "Network features and point-in-time design", "eda_14_network_signal_by_scenario"],
@@ -773,23 +1102,35 @@ add(f"""
  ["8", "Imbalance: SMOTE doesn't help", "ml_05_imbalance"], ["9", "RQ7 per-scenario recall", "ml_04_per_scenario_xgb"],
  ["10", "BORDERLINE problem + 3-class", "ml_06_confusion_by_label, ml_08_borderline"],
  ["11", "Temporal robustness", "ml_07_temporal"], ["12", "Interpretable tree", "ml_09_decision_tree"],
- ["13", "Next: clustering, anomaly, tuning, stacking, SHAP", "Ch. 12"], ["14", "Conclusions", "Ch. 14"],
+ ["13", "RQ5: clustering without labels (K choice, 4 clusters)", "unsup_01_kmeans_selection, unsup_02_cluster_composition, unsup_03_embeddings"],
+ ["14", "RQ6: detectors trained on legitimate data only", "unsup_05_detector_pr, unsup_06_detector_bars"],
+ ["15", "Per-scenario anomaly results: anomalous ≠ fraudulent", "unsup_07_scenario_heatmap"],
+ ["16", "Autoencoder + ONNX; complementarity with XGBoost", "unsup_08_autoencoder, unsup_09_complementarity"],
+ ["17", "Tuning: Grid vs Randomized search; default vs tuned", "final_01_tuning + Ch. 13 tuning table"],
+ ["18", "Bias–variance: depth curve and learning curves", "final_02_bias_variance"],
+ ["19", "Stacking (no gain) and calibration", "final_03_calibration, final_04_test_comparison"],
+ ["20", "Final model and the 0–100 risk score with tiers", "Ch. 13 final table, final_06_risk_score"],
+ ["21", "Explainability: SHAP global, beeswarm, two local explanations", "final_07_importance, final_08_shap_beeswarm, final_09_local_explanations"],
+ ["22", "Live demo: risk scorer with a what-if change; ML lab; clustering page", "dashboard_08_risk_scorer, dashboard_05_ml_lab, dashboard_06_clusters (Ch. 15)"],
+ ["23", "Conclusions", "Ch. 18"],
 ], ["Slide", "Content", "Figure / source"], "small", widths=["8%", "52%", "40%"])}
-<p><b>One-line pitch:</b> "We trained 6 classifiers across 3 feature sets on two dataset versions and used paired cross-validation to show that network features help only where real network structure exists. XGBoost reaches PR-AUC {best['test_pr_auc']:.2f}, and SMOTE didn't help."</p>
-<h2>15.3 Cloud Computing &amp; Technology</h2>
-<p><b>Report outline:</b> Introduction (Ch. 2) → Requirements and service models → Architecture (Ch. 12 Phase 8) → Containers and microservices → REST API design → Deployment on Vercel + Render, with constraints → CI/CD and IaC → Scalability, scale-to-zero and cost → Security and observability → Evaluation (cold start, latency, image size: to be measured in Phase 10) → Conclusions.</p>
+<p><b>One-line pitch:</b> "We trained 6 classifiers across 3 feature sets on two dataset versions and used paired cross-validation to show that network features help only where real network structure exists. the tuned, calibrated XGBoost reaches PR-AUC {FT['test_pr_auc']:.2f} and F1 {FT['test_f1']:.2f}, stacking didn't beat it, and SMOTE didn't help. Without labels, clustering finds interpretable risk groups and legit-only anomaly detectors reach PR-AUC ≈ 0.55 while adding a complementary signal."</p>
+<h2>19.3 Cloud Computing &amp; Technology</h2>
+<p><b>Report outline:</b> Introduction (Ch. 2) → Requirements and service models → Architecture, microservices vs monolith (Ch. 14) → Containers and the model registry (Ch. 14) → REST API design (Ch. 14) → Security and observability (Ch. 14) → Local evaluation: latency, memory, load, scaling (Ch. 14) → Frontend as a static CDN app (Ch. 15) → Deployment on Vercel + Render, constraints, NIST framing (Ch. 16) → CI/CD and IaC → Cloud evaluation: cold start, Render vs Cloud Run (Phase 10) → Conclusions (Ch. 18).</p>
 {table([
  ["1", "Title + pitch", "—"], ["2", "What the platform does (ML + mining as a service)", "Ch. 1"],
- ["3", "Service models: where Render, Vercel and our API sit", "Ch. 13 CCT table"], ["4", "Architecture: gateway + 4 services + SPA", "Ch. 12 flow diagram"],
- ["5", "REST endpoints and OpenAPI", "Ch. 12 endpoint table"], ["6", "Containers: Dockerfiles, slim/non-root images", "Phase 8"],
- ["7", "Deployment topology: Vercel CDN → Render containers", "Ch. 12 deployment table"], ["8", "Free-tier constraints → design responses", "Ch. 12 constraints table"],
- ["9", "Microservices vs modular monolith (two modes)", "Ch. 12"], ["10", "CI/CD, IaC, model registry", "Ch. 12"],
- ["11", "Scale-to-zero vs cold start; load test results", "Phase 10 measurements"], ["12", "Security and observability", "Ch. 13"],
- ["13", "Live demo", "Vercel URL"], ["14", "Conclusions", "Ch. 14"],
+ ["3", "Is this cloud? NIST's 5 characteristics + service models (why Render/Vercel, not only AWS/GCP)", "Ch. 16 'Why this is cloud computing' tables"], ["4", "Architecture: gateway + 4 services + SPA", "Ch. 14 flow diagram"],
+ ["5", "REST endpoints and OpenAPI", "Ch. 14 endpoint table"], ["6", "Containers: multi-stage Dockerfile, slim non-root images, image sizes", "Ch. 14 containers table"],
+ ["7", "Deployment topology: Vercel CDN → Render containers", "Ch. 16 deployment table"], ["8", "Free-tier constraints → design responses", "Ch. 16 constraints table"],
+ ["9", "Microservices vs modular monolith: same code, measured", "Ch. 14 mode table + platform_01_phase8"], ["10", "Model registry (versioned bundle), CI/CD, IaC; ONNX as a portable model format", "Ch. 14, Ch. 12 (ONNX)"],
+ ["11", "Load test + horizontal scaling (--scale ml-service=3); profiling-driven optimisation", "platform_01_phase8, Ch. 14 load table"], ["11a", "Scale-to-zero vs cold start on Render", "Phase 10 measurements"],
+ ["11b", "Portability: same image on Render vs Google Cloud Run (latency, cold start, cost model)", "Phase 10 measurements (D-028)"], ["12", "Security and observability (internal key, CORS, request IDs, /metrics)", "Ch. 14"],
+ ["12b", "Frontend on a CDN: static SPA, cold-start handling, CORS", "Ch. 15 design decisions, dashboard_09_platform"],
+ ["13", "Live demo (Vercel URL; local: make serve + make dashboard)", "dashboard_08_risk_scorer, dashboard_09_platform"], ["14", "Conclusions", "Ch. 18"],
 ], ["Slide", "Content", "Figure / source"], "small", widths=["8%", "52%", "40%"])}
 <p><b>One-line pitch:</b> "Five stateless FastAPI microservices in Docker, deployed on Render from a Blueprint, with a React dashboard served from Vercel's CDN. Artifacts are versioned as GitHub Releases and baked into immutable images, deploys are triggered by Git pushes, and we measure the scale-to-zero vs cold-start trade-off."</p>
 <h2>Suggested live-demo flow</h2>
-<ol><li>Dataset overview and the audit story (leakage, missing network).</li><li>v1.0 → v1.1: a fraud ring and a layering chain.</li><li>Top association rules; Apriori vs FP-Growth memory.</li><li>A → B → C improvement; v1.0 control.</li><li>A BORDERLINE example and why it's hard.</li><li>Risk scorer: submit a transaction, see score, tier and explanation (after Phase 9).</li><li>Platform page: services, cold start vs warm latency (after Phase 10).</li></ol>
+<ol><li>Dataset overview and the audit story (leakage, missing network).</li><li>v1.0 → v1.1: a fraud ring and a layering chain.</li><li>Top association rules; Apriori vs FP-Growth memory.</li><li>A → B → C improvement; v1.0 control.</li><li>A BORDERLINE example and why it's hard.</li><li>Clusters in t-SNE and an anomaly score that flags a new-device fraud the rules don't know.</li><li>Risk scorer page: score the mule example (100, CRITICAL), then set the amount to ₹500 and watch the score and reasons change.</li><li>Network explorer: open the top PageRank account and show the fan-in of fraudulent payments.</li><li>Platform page: services, wake-up time and the live latency probe (cloud numbers after Phase 10).</li></ol>
 </section>
 """)
 
@@ -817,9 +1158,9 @@ gloss = [
  ["CDN", "content delivery network: serves static files from servers close to the user"],
 ]
 pipeline_cmds = [
- ["Install", "uv sync --all-extras"], ["Tests", "make test (31 tests)"],
- ["Full pipeline", "make pipeline (stages: inject, wrangle, graph, sanctions, eda, mining, train_supervised)"],
- ["One stage", "make pipeline STAGES=mining"], ["Notebooks", "notebooks/02_eda, 03_association_mining, 04_supervised_ml (executed, 0 errors)"],
+ ["Install", "uv sync --all-extras"], ["Tests", f"make test ({N_TESTS} tests)"],
+ ["Full pipeline", "make pipeline (stages: inject, wrangle, graph, sanctions, eda, mining, train_supervised, unsupervised, train_final); then make bundle → make serve (one process) or make up (Docker microservices) → make dashboard (React UI on :5173)"],
+ ["One stage", "make pipeline STAGES=mining"], ["Notebooks", "notebooks/02_eda, 03_association_mining, 04_supervised_ml, 05_unsupervised_ml, 06_tuning_ensemble (executed, 0 errors)"],
  ["This report", "uv run python docs/report/build_report.py"],
 ]
 outputs = [
@@ -827,6 +1168,10 @@ outputs = [
  ["reports/eda_summary.json · figures/eda_01…14", "Phase 2"], ["dataset/curated/master_features_v1_{0,1}.parquet · artifacts/graph/", "Phase 3"],
  ["reports/association_rules_*.csv · mining_benchmark.csv · mining_paysim_scaling.csv · emerging_patterns_v1_1.csv · mining_summary.json · figures/mining_01…08", "Phase 4"],
  ["reports/ml_experiment_results.csv · ml_cv_folds.csv · ml_paired_tests.csv · ml_imbalance.csv · ml_per_scenario.csv · ml_temporal.csv · ml_summary.json · figures/ml_01…09 · artifacts/models/phase5/", "Phase 5"],
+ ["reports/unsupervised_summary.json · unsup_kmeans_sweep.csv · unsup_clusters.csv · anomaly_results.csv · anomaly_per_scenario.csv · anomaly_paysim_if.json · figures/unsup_01…10 · artifacts/models/{anomaly,clustering}/ (autoencoder_expC.onnx)", "Phase 6"],
+ ["reports/final_summary.json · final_tuning_*.csv · final_learning_curves.csv · final_model_comparison.csv · final_risk_*.csv · final_shap_importance.csv · final_permutation_importance.csv · figures/final_01…09 · artifacts/models/final/ (production_model.joblib, xgboost_explainer.joblib, risk_scorer.json, metrics.json)", "Phase 7"],
+ ["artifacts/bundle/ (versioned serving bundle) · reports/platform_summary.json · platform_compose-*.json · load_*_stats.csv · figures/platform_01_phase8", "Phase 8"],
+ ["frontend/ (React SPA, vercel.json) · reports/figures/dashboard_01…09", "Phase 9"],
 ]
 refs = [
  "Fayyad, U., Piatetsky-Shapiro, G., Smyth, P. (1996). From Data Mining to Knowledge Discovery in Databases. AI Magazine 17(3).",
@@ -840,15 +1185,26 @@ refs = [
  "Chawla, N. et al. (2002). SMOTE: Synthetic Minority Over-sampling Technique. JAIR 16.",
  "Dietterich, T. (1998). Approximate Statistical Tests for Comparing Supervised Classification Learning Algorithms. Neural Computation 10.",
  "Saito, T., Rehmsmeier, M. (2015). The Precision-Recall Plot Is More Informative than the ROC Plot on Imbalanced Datasets. PLOS ONE.",
- "Liu, F. T., Ting, K. M., Zhou, Z.-H. (2008). Isolation Forest. ICDM.", "Schölkopf, B. et al. (2001). Estimating the Support of a High-Dimensional Distribution. Neural Computation.",
- "Lundberg, S., Lee, S.-I. (2017). A Unified Approach to Interpreting Model Predictions (SHAP). NeurIPS.",
+ "Liu, F. T., Ting, K. M., Zhou, Z.-H. (2008). Isolation Forest. ICDM.",
+ "MacQueen, J. (1967). Some Methods for Classification and Analysis of Multivariate Observations (K-Means). Berkeley Symp.",
+ "Ester, M., Kriegel, H.-P., Sander, J., Xu, X. (1996). A Density-Based Algorithm for Discovering Clusters (DBSCAN). KDD.",
+ "Rousseeuw, P. (1987). Silhouettes. J. Comput. Appl. Math. 20; Davies, D., Bouldin, D. (1979). A Cluster Separation Measure. IEEE TPAMI.",
+ "Hubert, L., Arabie, P. (1985). Comparing Partitions (Adjusted Rand Index). J. Classification 2.",
+ "van der Maaten, L., Hinton, G. (2008). Visualizing Data using t-SNE. JMLR 9.",
+ "Hinton, G., Salakhutdinov, R. (2006). Reducing the Dimensionality of Data with Neural Networks (autoencoders). Science 313.",
+ "ONNX: Open Neural Network Exchange specification (onnx.ai); ONNX Runtime (onnxruntime.ai).", "Schölkopf, B. et al. (2001). Estimating the Support of a High-Dimensional Distribution. Neural Computation.",
+ "Lundberg, S., Lee, S.-I. (2017). A Unified Approach to Interpreting Model Predictions (SHAP). NeurIPS; Lundberg, S. et al. (2020). From Local Explanations to Global Understanding with Explainable AI for Trees (TreeSHAP). Nature Machine Intelligence 2.",
+ "Bergstra, J., Bengio, Y. (2012). Random Search for Hyper-Parameter Optimization. JMLR 13.",
+ "Wolpert, D. (1992). Stacked Generalization. Neural Networks 5.",
+ "Zadrozny, B., Elkan, C. (2002). Transforming Classifier Scores into Accurate Multiclass Probability Estimates (isotonic calibration). KDD; Niculescu-Mizil, A., Caruana, R. (2005). Predicting Good Probabilities with Supervised Learning. ICML.",
+ "Breiman, L. (2001). Statistical Modeling: The Two Cultures; Fisher, A., Rudin, C., Dominici, F. (2019). All Models are Wrong, but Many are Useful (permutation importance). JMLR 20.",
  "Blondel, V. et al. (2008). Fast Unfolding of Communities in Large Networks (Louvain). J. Stat. Mech.",
  "Lopez-Rojas, E., Elmir, A., Axelsson, S. (2016). PaySim: A Financial Mobile Money Simulator for Fraud Detection. EMSS.",
  "IEEE Computational Intelligence Society & Vesta (2019). IEEE-CIS Fraud Detection, Kaggle competition dataset.",
  "U.S. Treasury OFAC, Specially Designated Nationals (SDN) List; United Nations Security Council Consolidated List.",
  "Reserve Bank of India. Master Directions on Fraud Risk Management in Commercial Banks. FATF (2026). The FATF Recommendations.",
  "Wiggins, A. (2017). The Twelve-Factor App. Render documentation (render.com/docs/free); Vercel documentation (vercel.com/docs).",
- "Libraries: pandas, NumPy, scikit-learn, imbalanced-learn, XGBoost, MLxtend, NetworkX, Polars, RapidFuzz, Matplotlib.",
+ "Libraries: pandas, NumPy, scikit-learn, imbalanced-learn, XGBoost, MLxtend, NetworkX, Polars, RapidFuzz, PyTorch, ONNX Runtime, Matplotlib.",
 ]
 add(f"""
 <section>

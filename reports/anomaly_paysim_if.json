@@ -3,13 +3,13 @@
   "fraud_rows": 8213,
   "fraud_rate": 0.002964544224336551,
   "fit_sample": 250000,
-  "wrangle_seconds": 0.92,
+  "wrangle_seconds": 0.84,
   "feature_sets": {
     "raw": {
       "n_features": 7,
-      "fit_seconds": 0.51,
-      "score_seconds": 21.53,
-      "rows_per_second": 128657,
+      "fit_seconds": 0.67,
+      "score_seconds": 25.94,
+      "rows_per_second": 106800,
       "pr_auc": 0.3409147007853698,
       "roc_auc": 0.8918544964746997,
       "recall_at_1pct_fpr": 0.5250213076829416,
@@ -26,9 +26,9 @@
     },
     "raw+balance_error": {
       "n_features": 9,
-      "fit_seconds": 0.47,
-      "score_seconds": 21.13,
-      "rows_per_second": 131090,
+      "fit_seconds": 0.82,
+      "score_seconds": 29.34,
+      "rows_per_second": 94432,
       "pr_auc": 0.4875219782704335,
       "roc_auc": 0.953404081072055,
       "recall_at_1pct_fpr": 0.5206380129063679,
@@ -44,5 +44,5 @@
       "p99_flag_rate": 0.009837175666120057
     }
   },
-  "peak_rss_mb": 1964.7
+  "peak_rss_mb": 1811.8
 }

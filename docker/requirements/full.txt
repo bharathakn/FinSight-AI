@@ -1,0 +1,9 @@
+# inprocess gateway (single Render service): everything in one image = ml.txt
+-r base.txt
+scikit-learn==1.9.1
+scipy==1.18.1
+joblib==1.6.0
+threadpoolctl==3.8.0
+imbalanced-learn==0.14.2
+xgboost-cpu==3.4.1
+onnxruntime==1.32.0

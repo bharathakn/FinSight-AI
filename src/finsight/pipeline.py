@@ -152,6 +152,20 @@ def stage_unsupervised():
              s["onnx_parity"]["pass"], s["runtime_seconds"])
 
 
+def stage_train_final():
+    """Phase 7: tuning (Grid/Randomized, 5-fold CV), stacking + isotonic calibration, risk score, SHAP."""
+    import warnings
+
+    from finsight.ml.final_model import run_all
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        s = run_all()
+    log.info("final: production=%s test PR-AUC %.3f F1 %.3f; risk weights %s; reload ok=%s; %.0fs",
+             s["production_model"], s["test"]["test_pr_auc"], s["test"]["test_f1"], s["risk_scorer"]["weights"],
+             s["reload_check"]["pass"], s["runtime_seconds"])
+
+
 STAGES = {
     "inject": stage_inject,
     "wrangle": stage_wrangle,
@@ -161,6 +175,7 @@ STAGES = {
     "mining": stage_mining,
     "train_supervised": stage_train_supervised,
     "unsupervised": stage_unsupervised,
+    "train_final": stage_train_final,
 }
 
 

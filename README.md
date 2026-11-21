@@ -15,8 +15,13 @@ One project submitted across three courses: **Data Mining & Wrangling**, **Machi
 ```bash
 uv sync --all-extras      # see docs/SETUP.md for full install steps
 make test
-make pipeline             # v1.1 injection → master tables → graph features → sanctions
+make pipeline             # data → features → mining → supervised → unsupervised → final model
+make bundle               # package the trained artifacts for serving
+make serve                # API on http://localhost:8000/docs (single process)
+make up                   # or: 5 Docker microservices (gateway :8000 + ml / mining / graph / sanctions)
+make dashboard            # React dashboard on http://localhost:5173 (9 pages)
 ```
+Score a transaction: `curl -X POST localhost:8000/score-transaction -H 'content-type: application/json' -d '{"transaction_id": "TXN_IND_202608_001768"}'`
 
 ## Documentation
 | Doc | Contents |
@@ -28,5 +33,10 @@ make pipeline             # v1.1 injection → master tables → graph features 
 | [docs/SETUP.md](docs/SETUP.md) | Installation + manual setup tasks |
 | [CLAUDE.md](CLAUDE.md) | Working rules for AI coding agents |
 
-## Headline result so far (Phase 1b)
-RF F1 on `is_fraud`: v1.0 control A/B/C = 0.724 / 0.874 / 0.872; v1.1 = 0.754 / 0.810 / **0.839**. Network features help only where real structure exists.
+## Results so far (phases 0–9 of 10)
+- **Supervised (Phase 5):** XGBoost on all features, test PR-AUC **0.875**, F1 0.801. Network features significantly help 5 of 6 models on v1.1 and 0 of 6 on the v1.0 control.
+- **Unsupervised (Phase 6):** K-Means finds 1 normal and 3 interpretable risk clusters (ARI 0.47). Detectors trained only on legitimate rows reach PR-AUC ≈ 0.55 (One-class SVM ≈ autoencoder, exported to ONNX) and flag most BORDERLINE rows: anomalous ≠ fraudulent.
+- **Production model (Phase 7):** tuned + isotonic-calibrated XGBoost, test PR-AUC **0.885**, F1 **0.827** (precision 0.73, recall 0.94), 0.43 MB artifact; stacking didn't beat it. A 0–100 risk score with validation-chosen tiers puts 53% of fraud in CRITICAL and 79% of legitimate payments in LOW, with native SHAP reasons for every score.
+- **Services (Phase 8):** FastAPI gateway + 4 microservices in Docker (or one process); `/score-transaction` p95 27 ms warm; 323 MB for the single-container deployment; 0 errors at 87 req/s in a local load test.
+- **Dashboard (Phase 9):** React SPA with 9 pages (overview, data quality, explorer, pattern lab, ML lab, clustering, network, what-if risk scorer, platform), ready for Vercel.
+- Full write-up: `reports/FinSight_AI_Project_Report.pdf` (`make report`).

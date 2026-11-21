@@ -1,0 +1,88 @@
+# Render Blueprint — microservices variant (remote mode): gateway + 4 domain services, all free web services.
+#   Render dashboard → New → Blueprint → this repo → Blueprint path: deploy/render-full.yaml.
+# Free web services can't receive private-network traffic, so services call each other over public HTTPS
+# and every internal call carries X-Internal-Key from the shared env group (D-023). Each service sleeps
+# independently after 15 min idle: the first request may wake several (this is the cold-start cost that
+# the single-service render.yaml avoids — compare both with deploy/measure.py --cold).
+envVarGroups:
+  - name: finsight-shared
+    envVars:
+      - key: FINSIGHT_INTERNAL_KEY
+        generateValue: true
+      - key: ARTIFACTS_URL
+        value: https://github.com/bharathakn/FinSight-AI/releases/latest/download/finsight-artifacts.tar.gz
+      - key: FINSIGHT_HTTP_TIMEOUT
+        value: "90"                   # a sleeping peer can take ~1 min to wake
+
+services:
+  - type: web
+    name: finsight-gateway
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./docker/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - fromGroup: finsight-shared
+      - { key: SERVICE, value: gateway }
+      - { key: REQS, value: base }
+      - { key: FINSIGHT_SERVICE_MODE, value: remote }
+      - { key: WEB_CONCURRENCY, value: "2" }
+      - { key: FINSIGHT_CORS_ORIGINS, sync: false }
+      - key: FINSIGHT_ML_URL
+        fromService: { type: web, name: finsight-ml, property: host }
+      - key: FINSIGHT_MINING_URL
+        fromService: { type: web, name: finsight-mining, property: host }
+      - key: FINSIGHT_GRAPH_URL
+        fromService: { type: web, name: finsight-graph, property: host }
+      - key: FINSIGHT_SANCTIONS_URL
+        fromService: { type: web, name: finsight-sanctions, property: host }
+  - type: web
+    name: finsight-ml
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./docker/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - fromGroup: finsight-shared
+      - { key: SERVICE, value: ml }
+      - { key: REQS, value: ml }
+  - type: web
+    name: finsight-mining
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./docker/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - fromGroup: finsight-shared
+      - { key: SERVICE, value: mining }
+      - { key: REQS, value: base }
+  - type: web
+    name: finsight-graph
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./docker/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - fromGroup: finsight-shared
+      - { key: SERVICE, value: graph }
+      - { key: REQS, value: base }
+  - type: web
+    name: finsight-sanctions
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./docker/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - fromGroup: finsight-shared
+      - { key: SERVICE, value: sanctions }
+      - { key: REQS, value: base }

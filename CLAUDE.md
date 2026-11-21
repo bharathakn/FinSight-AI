@@ -35,15 +35,20 @@ make test             # pytest
 make pipeline         # python -m finsight.pipeline (all implemented stages)
 make pipeline STAGES=inject,wrangle,graph
 make lab              # Jupyter Lab
+make report           # rebuild reports/FinSight_AI_Project_Report.pdf
+make bundle           # package serving artifacts (after training) → artifacts/bundle + docker/bundle
+make serve            # gateway on :8000 in inprocess mode (/docs for Swagger)
+make up / make down   # Docker Compose microservices (remote mode); make scale N=3; make loadtest; make measure
+make dashboard        # React dashboard on :5173 (needs the API: make serve); make dashboard-build → frontend/dist
 ```
 Without make: `PYTHONPATH=src .venv/bin/python -m finsight.pipeline --stages ...`
 
 ## Code layout
 ```
 src/finsight/   config · data/ · graph/ · mining/ · ml/ · sanctions/ · scoring/ · pipeline.py
-services/       FastAPI apps (gateway, ml, mining, graph, sanctions)       [Phase 8]
-frontend/       React + Vite dashboard → Vercel                            [Phase 9]
-docker/ deploy/ Dockerfiles, compose, render.yaml, scripts                 [Phase 8, 10]
+services/       entry points only (services/<name>/main.py); logic in src/finsight/serving/  [Phase 8]
+frontend/       React + Vite + TS dashboard (9 pages) → Vercel; calls only the gateway   [Phase 9]
+docker/ deploy/ one multi-stage Dockerfile + compose; measure / publish scripts; render.yaml  [Phase 8, 10]
 dataset/        raw + processed (git-ignored); curated/ = pipeline outputs
 artifacts/      models, graph state, sanctions entities (git-ignored)
 reports/        JSON/CSV/figures that back the report (tracked)

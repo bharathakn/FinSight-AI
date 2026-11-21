@@ -1,0 +1,24 @@
+{
+  "label": "compose-inprocess",
+  "url": "http://localhost:8080",
+  "measured_utc": "2026-11-21T14:42:37Z",
+  "warm": {
+    "n": 300,
+    "client_p50_ms": 20.94,
+    "client_p95_ms": 28.13,
+    "client_p99_ms": 33.36,
+    "client_mean_ms": 21.83,
+    "server_p50_ms": 19.4,
+    "server_p95_ms": 26.4,
+    "tiers": {
+      "LOW": 201,
+      "HIGH": 18,
+      "MEDIUM": 54,
+      "CRITICAL": 27
+    }
+  },
+  "mode": "inprocess",
+  "rss_mb": {
+    "gateway": 323.3
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "label": "compose-remote",
+  "url": "http://localhost:8000",
+  "measured_utc": "2026-11-21T14:42:00Z",
+  "warm": {
+    "n": 300,
+    "client_p50_ms": 19.78,
+    "client_p95_ms": 27.23,
+    "client_p99_ms": 32.07,
+    "client_mean_ms": 20.6,
+    "server_p50_ms": 18.3,
+    "server_p95_ms": 25.3,
+    "tiers": {
+      "LOW": 201,
+      "HIGH": 18,
+      "MEDIUM": 54,
+      "CRITICAL": 27
+    }
+  },
+  "mode": "remote",
+  "rss_mb": {
+    "gateway": 177.5,
+    "ml": 307.5,
+    "mining": 158.6,
+    "graph": 158.2,
+    "sanctions": 174.9
+  }
+}

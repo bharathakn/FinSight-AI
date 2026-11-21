@@ -1,0 +1,32 @@
+# Render Blueprint (Infrastructure as Code) — default free deployment: ONE web service, inprocess mode (D-023).
+#   Render dashboard → New → Blueprint → select this repo → Apply.
+#   You are asked for FINSIGHT_CORS_ORIGINS (your Vercel URL, e.g. https://finsight-ai.vercel.app).
+# The image is built from docker/Dockerfile; Render passes these env vars to the build as build args
+# (SERVICE, REQS, ARTIFACTS_URL), and at runtime injects $PORT. Model artifacts come from the latest
+# GitHub Release (make publish-artifacts), so a new model never needs a config change here.
+# Microservices variant (5 services, remote mode): deploy/render-full.yaml.
+services:
+  - type: web
+    name: finsight-api
+    runtime: docker
+    plan: free
+    region: singapore                 # closest Render region to India
+    dockerfilePath: ./docker/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeploy: true                  # GitOps: every push to main redeploys
+    envVars:
+      - key: SERVICE                  # build arg: which services/<name>/main.py to run
+        value: gateway
+      - key: REQS                     # build arg: full dependency set (ml stack in one process)
+        value: full
+      - key: ARTIFACTS_URL            # build arg: model registry (GitHub Release asset)
+        value: https://github.com/bharathakn/FinSight-AI/releases/latest/download/finsight-artifacts.tar.gz
+      - key: FINSIGHT_SERVICE_MODE
+        value: inprocess
+      - key: FINSIGHT_CORS_ORIGINS    # comma-separated; set to the Vercel URL(s)
+        sync: false
+      - key: FINSIGHT_INTERNAL_KEY    # unused in inprocess mode, generated anyway (secret, never in Git)
+        generateValue: true
+      - key: FINSIGHT_LOG_LEVEL
+        value: INFO

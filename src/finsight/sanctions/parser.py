@@ -14,6 +14,7 @@ import pandas as pd
 from lxml import etree
 
 from finsight import config
+from finsight.sanctions.text import normalise_name  # noqa: F401  (re-exported)
 
 OFAC_COLUMNS = ["ent_num", "sdn_name", "sdn_type", "program", "title", "call_sign",
                 "vess_type", "tonnage", "grt", "vess_flag", "vess_owner", "remarks"]
@@ -21,15 +22,6 @@ OFAC_NULL = "-0-"
 _AKA = re.compile(r"a\.k\.a\.\s*'([^']+)'", re.IGNORECASE)
 _NON_ALNUM = re.compile(r"[^a-z0-9 ]+")
 _WS = re.compile(r"\s+")
-
-
-def normalise_name(name: str) -> str:
-    """Casefold, strip accents/punctuation, collapse whitespace: 'Müller-Ödön, J.' → 'muller odon j'."""
-    if not isinstance(name, str):
-        return ""
-    s = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode()
-    s = _NON_ALNUM.sub(" ", s.lower())
-    return _WS.sub(" ", s).strip()
 
 
 def _ofac_display_name(raw: str, sdn_type: str) -> str:

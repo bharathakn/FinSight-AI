@@ -1,0 +1,14 @@
+# Runtime for gateway (remote mode), mining-, graph- and sanctions-service. No sklearn / xgboost.
+# Versions match the training environment (uv.lock) so artifacts load identically.
+fastapi==0.165.0
+starlette==1.10.0
+uvicorn==0.54.0
+uvloop==0.23.0
+httptools==0.9.0
+httpx==0.28.1
+pydantic==2.14.4
+numpy==2.5.5
+pandas==3.1.1
+pyarrow==26.0.1
+rapidfuzz==3.14.6
+fsspec==2026.9.0

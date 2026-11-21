@@ -81,7 +81,7 @@ gh auth login          # choose GitHub.com → HTTPS → login with browser
 
 Node.js (v24, via nvm) is already installed; it's needed for the React dashboard (Phase 9). No action needed.
 
-> The Google Cloud CLI installed earlier is no longer needed (deployment moved to Vercel + Render, D-022). You can leave it or remove it: `sudo apt-get remove google-cloud-cli`.
+> Keep the Google Cloud CLI installed earlier: it is used again for the optional **Cloud Run portability experiment** in Phase 10 (D-028, §5.1c). Render + Vercel remain the main deployment.
 
 ---
 
@@ -99,6 +99,22 @@ Node.js (v24, via nvm) is already installed; it's needed for the React dashboard
    - In Phase 10: *Add New → Project → import FinSight-AI*, set **Root Directory = `frontend`**, and add the env var `VITE_API_BASE_URL` = the Render URL.
 4. **Tell the agent** once these exist: the Render service URL (after the first deploy) and the Vercel project URL, so CORS and the frontend config can be set.
 5. Optional, only if you want a real object-storage bucket for the CCT "cloud storage" topic: a free **Supabase** project (Storage → S3 access keys) or **Cloudflare R2**. Not required for the deployment to work.
+
+### 5.1c Google Cloud for the Cloud Run comparison (needed by Phase 10; D-028)
+1. In https://console.cloud.google.com create a project, e.g. `finsight-ai` (note the **project ID**).
+2. **Billing:** link a billing account (requires a card; the demo stays inside the Cloud Run free tier). Immediately create a **budget alert** (Billing → Budgets & alerts, e.g. ₹200 with alerts at 50/90/100%).
+3. Authenticate and enable the APIs:
+```bash
+gcloud auth login
+gcloud config set project <PROJECT_ID>
+gcloud config set run/region asia-south1
+gcloud services enable run.googleapis.com artifactregistry.googleapis.com
+gcloud artifacts repositories create finsight --repository-format=docker --location=asia-south1
+gcloud auth configure-docker asia-south1-docker.pkg.dev
+```
+4. **Verify:** `gcloud run services list` (an empty list is fine). Tell the agent the project ID.
+
+If nobody on the team can add a card, skip this: the report then presents Cloud Run as the documented portability path instead of a measured one.
 
 ### 5.1b Free-tier facts to know (no action)
 - Render free services **sleep after 15 minutes idle**; the first request afterwards takes **~1 minute** (the dashboard shows a "waking the backend" screen). Open the site a minute before a demo.
@@ -122,7 +138,8 @@ Node.js (v24, via nvm) is already installed; it's needed for the React dashboard
 - [x] §1 system packages
 - [x] §2 `uv sync --all-extras` + kernel registered + `pytest` passes
 - [x] §3 Docker works without sudo (`docker run --rm hello-world`)
-- [x] §4 (old) gcloud installed (no longer needed)
+- [x] §4 (old) gcloud installed (reused for the Cloud Run comparison)
+- [ ] §5.1c GCP project + billing + budget alert + APIs enabled (optional, for D-028)
 - [ ] §4 `gh auth status` works
 - [ ] §5.1 Render + Vercel accounts created via GitHub; repo access granted (public repo or token decided)
 - [ ] §5.2 Rubrics / deadlines added to `docs/course/`

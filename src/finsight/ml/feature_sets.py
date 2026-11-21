@@ -8,7 +8,7 @@ from __future__ import annotations
 import pandas as pd
 
 from finsight import config
-from finsight.graph.network_features import GLOBAL_FEATURES, POINT_IN_TIME_FEATURES
+from finsight.graph.feature_names import GLOBAL_FEATURES, POINT_IN_TIME_FEATURES
 
 TARGET = "is_fraud"
 

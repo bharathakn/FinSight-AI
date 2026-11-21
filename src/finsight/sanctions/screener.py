@@ -6,7 +6,7 @@ from dataclasses import dataclass
 import pandas as pd
 from rapidfuzz import fuzz, process
 
-from finsight.sanctions.parser import normalise_name
+from finsight.sanctions.text import normalise_name
 
 DEFAULT_THRESHOLD = 90.0
 

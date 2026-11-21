@@ -1,0 +1,88 @@
+# FinSight AI — microservices (remote mode) on one machine.             Plan §8.1, D-023
+#
+#   make bundle                          # once: package the trained artifacts into docker/bundle/
+#   docker compose -f docker/docker-compose.yml up --build -d
+#   docker compose -f docker/docker-compose.yml up -d --scale ml-service=3      # horizontal scaling demo
+#   docker compose -f docker/docker-compose.yml --profile monolith up -d        # + single-container inprocess variant
+#
+# Only the gateway publishes a port. The four domain services are reachable only on the private Compose
+# network and additionally require X-Internal-Key (the same protection used on Render, where free services
+# have no private network). Service-to-service DNS: http://ml-service:8001 etc.; with --scale, Docker's DNS
+# returns every replica and the gateway's connections spread across them (see the X-Served-By header).
+
+name: finsight
+
+x-common: &common
+  restart: unless-stopped
+  environment: &env
+    FINSIGHT_INTERNAL_KEY: ${FINSIGHT_INTERNAL_KEY:-dev-internal-key-change-me}
+    FINSIGHT_LOG_LEVEL: INFO
+  deploy:
+    resources:
+      limits:
+        memory: 512M          # same ceiling as a Render free instance
+
+x-build: &build
+  context: ..
+  dockerfile: docker/Dockerfile
+  args: &args
+    ARTIFACTS_URL: ${FINSIGHT_ARTIFACTS_URL:-}
+
+services:
+  gateway:
+    <<: *common
+    build: { <<: *build, args: { <<: *args, SERVICE: gateway, REQS: base } }
+    image: finsight/gateway:local
+    environment:
+      <<: *env
+      FINSIGHT_SERVICE_MODE: remote
+      FINSIGHT_ML_URL: http://ml-service:8001
+      FINSIGHT_MINING_URL: http://mining-service:8002
+      FINSIGHT_GRAPH_URL: http://graph-service:8003
+      FINSIGHT_SANCTIONS_URL: http://sanctions-service:8004
+      FINSIGHT_CORS_ORIGINS: ${FINSIGHT_CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
+      PORT: "8000"
+      WEB_CONCURRENCY: "2"
+    ports: ["8000:8000"]
+    depends_on:
+      ml-service: { condition: service_healthy }
+      mining-service: { condition: service_healthy }
+      graph-service: { condition: service_healthy }
+      sanctions-service: { condition: service_healthy }
+
+  ml-service:
+    <<: *common
+    build: { <<: *build, args: { <<: *args, SERVICE: ml, REQS: ml } }
+    image: finsight/ml:local
+    environment: { <<: *env, PORT: "8001" }
+    expose: ["8001"]
+
+  mining-service:
+    <<: *common
+    build: { <<: *build, args: { <<: *args, SERVICE: mining, REQS: base } }
+    image: finsight/mining:local
+    environment: { <<: *env, PORT: "8002" }
+    expose: ["8002"]
+
+  graph-service:
+    <<: *common
+    build: { <<: *build, args: { <<: *args, SERVICE: graph, REQS: base } }
+    image: finsight/graph:local
+    environment: { <<: *env, PORT: "8003" }
+    expose: ["8003"]
+
+  sanctions-service:
+    <<: *common
+    build: { <<: *build, args: { <<: *args, SERVICE: sanctions, REQS: base } }
+    image: finsight/sanctions:local
+    environment: { <<: *env, PORT: "8004" }
+    expose: ["8004"]
+
+  # Single-container "modular monolith" (what the free Render deployment runs) for side-by-side measurement.
+  monolith:
+    <<: *common
+    profiles: ["monolith"]
+    build: { <<: *build, args: { <<: *args, SERVICE: gateway, REQS: full } }
+    image: finsight/monolith:local
+    environment: { <<: *env, FINSIGHT_SERVICE_MODE: inprocess, PORT: "8000" }
+    ports: ["8080:8000"]

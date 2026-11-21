@@ -1,0 +1,9 @@
+# Build context = repo root. Only src/, services/ and docker/ (+ the local bundle tarball) are needed.
+*
+!src/finsight/**
+!services/**
+!docker/requirements/**
+!docker/bundle/**
+**/__pycache__
+**/*.pyc
+**/.ipynb_checkpoints
