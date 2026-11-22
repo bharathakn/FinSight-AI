@@ -33,7 +33,7 @@ export default function PatternsPage() {
                 marker: { size: r.map((x) => 6 + 2.2 * x.lift), color: css(c === "FRAUDULENT" ? "--s2" : "--s3"), opacity: 0.75, line: { color: css("--surface"), width: 1.5 } },
                 text: r.map((x) => x.rule), customdata: r.map((x) => x.lift),
                 hovertemplate: "%{text}<br>support %{x:.2%} · confidence <b>%{y:.0%}</b> · lift %{customdata:.2f}<extra></extra>" };
-            })} layout={() => ({ xaxis: { type: "log", title: { text: "support (share of all transactions, log)" }, tickformat: ".1%" },
+            })} layout={() => ({ xaxis: { type: "log", title: { text: "support (share of all transactions, log)" }, tickformat: ".1%", tickvals: [0.01, 0.02, 0.03, 0.05, 0.08] },
               yaxis: { title: { text: "confidence" }, tickformat: ".0%" }, legend: { orientation: "h", y: 1.1, x: 0 } })} />
           )}</Async>
         </Card>
@@ -54,9 +54,9 @@ export default function PatternsPage() {
           }}</Async>
         </Card>
       </div>
-      <div className="filters" style={{ marginTop: 14 }}>
-        <label className="field">Consequent
-          <Seg value={consequent} onChange={setConsequent} options={[{ value: "FRAUDULENT", label: "Fraudulent" }, { value: "BORDERLINE", label: "Borderline" }, { value: "", label: "Both" }]} /></label>
+      <div className="filters panel" style={{ marginTop: 18 }}>
+        <div className="field">Consequent
+          <Seg label="Consequent" value={consequent} onChange={setConsequent} options={[{ value: "FRAUDULENT", label: "Fraudulent" }, { value: "BORDERLINE", label: "Borderline" }, { value: "", label: "Both" }]} /></div>
         <label className="field">Min confidence <input type="number" step={0.05} min={0} max={1} value={minConf} onChange={(e) => setMinConf(Number(e.target.value))} /></label>
         <label className="field">Min lift <input type="number" step={0.5} min={0} value={minLift} onChange={(e) => setMinLift(Number(e.target.value))} /></label>
         <label className="check"><input type="checkbox" checked={networkOnly} onChange={(e) => setNetworkOnly(e.target.checked)} /> network items only</label>
@@ -73,11 +73,11 @@ export default function PatternsPage() {
             ]} max={60} />
           )}</Async>
         </Card>
-        <Card title="Items" note="Each transaction becomes a basket of these true/false items. Outlined chips in the table are network items (Phase 3 features).">
+        <Card title="Items" note="Each transaction becomes a basket of these true/false items. Amber chips in the table are network items (Phase 3 features).">
           <Async state={all}>{(p) => (
             <Table rows={Object.entries(p.item_definitions).map(([item, rule]) => ({ item, rule }))} columns={[
               { key: "item", label: "Item", render: (r) => <b className="small">{r.item}</b> }, { key: "rule", label: "Definition", render: (r) => <code>{r.rule}</code> },
-            ]} />
+            ]} tall />
           )}</Async>
         </Card>
       </div>

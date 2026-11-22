@@ -51,7 +51,7 @@ export default function DataQualityPage() {
               <Card title="Leakage scan: single-feature AUC" note="▲ SUSPECT = a column that alone predicts the label almost perfectly (an alert flag set only on fraud and borderline). Blacklisted and enforced in code.">
                 <Plot height={400} data={() => [{
                   type: "bar", orientation: "h", y: leak.map((r) => (r.flag ? "▲ " : "") + fmt.feature(r.feature)), x: leak.map((r) => r.auc),
-                  marker: { color: leak.map((r) => (r.flag ? css("--critical") : css("--s1"))) },
+                  marker: { color: leak.map((r) => (r.flag ? css("--critical") : css("--mark"))) },
                   text: leak.map((r) => r.auc.toFixed(3) + (r.flag ? "  SUSPECT" : "")), textposition: "outside", cliponaxis: false,
                   hovertemplate: "%{y}<br>AUC <b>%{x:.3f}</b><extra></extra>",
                 }]} layout={() => ({ showlegend: false, xaxis: { range: [0.45, 1.08], title: { text: "AUC of the column alone vs is_fraud" } }, margin: { l: 10, r: 60, t: 6, b: 10 } })} />
@@ -63,7 +63,7 @@ export default function DataQualityPage() {
                     marker: { color: css(`--s${gi + 1}`) }, customdata: rows.map((r) => r.mutual_info),
                     hovertemplate: "%{y}<br>AUC <b>%{x:.3f}</b> · MI %{customdata:.4f}<extra>" + g + "</extra>" };
                 })} layout={() => ({ barmode: "overlay", yaxis: { categoryorder: "array", categoryarray: rank.map((r) => fmt.feature(r.feature)) },
-                  xaxis: { range: [0.45, 0.9], title: { text: "single-feature AUC" } }, legend: { orientation: "h", y: -0.16, x: 0 } })} />
+                  xaxis: { range: [0.45, 0.9], title: { text: "single-feature AUC" } }, legend: { orientation: "h", y: 1.02, yanchor: "bottom", x: 0 }, margin: { l: 10, r: 14, t: 44, b: 10 } })} />
               </Card>
             </div>
             <div className="grid g2">
@@ -79,7 +79,7 @@ export default function DataQualityPage() {
                 <Plot height={300} data={() => {
                   const s = d.sanctions.customer_screening_threshold_sweep;
                   return [{ type: "scatter", mode: "lines+markers", x: s.map((r) => r.threshold), y: s.map((r) => r.false_positive_rate),
-                    line: { color: css("--s1"), width: 2 }, marker: { size: 8 }, text: s.map((r) => `${r.alerts} alerts`),
+                    line: { color: css("--mark"), width: 2 }, marker: { size: 8 }, text: s.map((r) => `${r.alerts} alerts`),
                     hovertemplate: "threshold %{x}<br><b>%{y:.2%}</b> of customers flagged (%{text})<extra></extra>" }];
                 }} layout={() => ({ showlegend: false, xaxis: { title: { text: "fuzzy-match threshold (RapidFuzz token sort ratio)" } }, yaxis: { tickformat: ".0%", title: { text: "false-positive rate" } } })} />
               </Card>

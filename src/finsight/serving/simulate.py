@@ -130,3 +130,23 @@ def simulate(ref, attacks: list[str], size: int = 10, camouflage: bool = False, 
             "injected_rows": int(len(att)), "injected_by_attack": att["scenario"].value_counts().to_dict(),
             "descriptions": {a: ATTACKS[a] for a in attacks}}
     return df.reset_index(drop=True), meta
+
+
+def detection_benchmark(ref, backend, scorer, seeds=(11, 12, 13), size: int = 10, background: int = 800) -> pd.DataFrame:
+    """Alert rate (tier ≥ HIGH) of each attack, plain and camouflaged, over several seeds; plus the false-alert
+    rate on the normal background payments of the same runs. Backs the report's Phase 9b table."""
+    from finsight.serving.batch import AnalysisStore, run
+
+    out = []
+    for attack in ATTACKS:
+        for camo in (False, True):
+            for seed in seeds:
+                df, meta = simulate(ref, [attack], size=size, camouflage=camo, background=background, seed=seed)
+                store = AnalysisStore()
+                s = run(df, ref, backend, scorer, store, {"type": "simulate", **meta})
+                r = store.get(s["analysis_id"]).rows
+                sim = r["scenario"].astype(str).str.startswith("SIM")
+                alert = r["tier"].isin(["HIGH", "CRITICAL"])
+                out.append({"attack": attack, "camouflage": camo, "seed": seed, "injected": int(sim.sum()),
+                            "alerted": float(alert[sim].mean()), "background_false_alert": float(alert[~sim].mean())})
+    return pd.DataFrame(out)

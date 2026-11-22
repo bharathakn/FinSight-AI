@@ -78,7 +78,7 @@ export default function PlatformPage({ wakeSeconds }: { wakeSeconds: number }) {
             <Card title="Live latency probe" aside={probe.length ? `p50 ${fmt.ms(q(probe, 50))} · p95 ${fmt.ms(q(probe, 95))} (n=${probe.length})` : ""}
                   note="30 sequential POST /score-transaction calls from this browser. Includes the network round trip to the API host; the target is p95 < 200 ms when warm.">
               <button className="primary" onClick={runProbe} disabled={probing}>{probing ? "Running…" : "Run 30 requests"}</button>
-              {probe.length > 0 && <Plot height={220} data={() => [{ type: "bar", x: probe.map((_, i) => i + 1), y: probe, marker: { color: css("--s1") },
+              {probe.length > 0 && <Plot height={220} data={() => [{ type: "bar", x: probe.map((_, i) => i + 1), y: probe, marker: { color: css("--mark") },
                 hovertemplate: "request %{x}: <b>%{y:.0f} ms</b><extra></extra>" }]}
                 layout={() => ({ showlegend: false, xaxis: { title: { text: "request #" } }, yaxis: { title: { text: "ms" }, rangemode: "tozero" },
                   shapes: [{ type: "line", xref: "paper", x0: 0, x1: 1, y0: 200, y1: 200, line: { color: css("--muted"), dash: "dash", width: 1 } }] })} />}

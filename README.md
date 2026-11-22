@@ -57,7 +57,7 @@ React SPA (Vite, TypeScript, Plotly)  ──HTTPS + CORS──▶  FastAPI gatew
   - `render.yaml` and `frontend/vercel.json` describe the deployments.
   - GitHub Actions run the tests, build the dashboard, and build and smoke-test the Docker image at 512 MB.
   - Every push to `main` redeploys both sites.
-- **Portability:** the same image is set up to run on Google Cloud Run (`deploy/cloudrun.sh`), and there are conceptual Kubernetes manifests in `deploy/k8s/`.
+- **Portability:** the same image runs unchanged in Docker Compose, in CI and on Render. A Google Cloud Run script (`deploy/cloudrun.sh`) and Kubernetes manifests (`deploy/k8s/`) are included but were not deployed, to avoid needing a billing card (D-038).
 
 ## Results
 | Phase | Result |
@@ -67,13 +67,14 @@ React SPA (Vite, TypeScript, Plotly)  ──HTTPS + CORS──▶  FastAPI gatew
 | Supervised (ML) | Network features significantly help 5 of 6 classifiers on v1.1 and 0 of 6 on the control; SMOTE never helped |
 | Production model (ML) | Tuned, isotonic-calibrated XGBoost: test **PR-AUC 0.885, F1 0.827** (precision 0.73, recall 0.94); stacking did not beat it; 0.43 MB |
 | Unsupervised (ML) | 4 interpretable K-Means clusters (ARI 0.47); detectors trained only on legitimate data reach PR-AUC ≈ 0.55 and flag most BORDERLINE cases (unusual ≠ fraudulent) |
-| Live analysis | Analysing the demo dataset reproduces every training feature exactly. Simulated attacks are caught 100% plain and 80–100% camouflaged, with ~2% false alerts on normal payments |
-| Services (CCT) | Warm `/score-transaction` p95 27 ms; single container 323 MB (< 512 MB free tier); 0 errors at 87 req/s in a local load test; scaling the ML service to 3 replicas cut median latency under load by 38% |
+| Live analysis | Analysing the demo dataset reproduces every training feature exactly. Simulated attacks are caught 100% plain and 90–100% camouflaged (shared devices ~63%, the hardest case), with ~1.4% false alerts on normal payments |
+| Services (CCT) | Local: warm `/score-transaction` p95 27 ms; 0 errors at 87 req/s in a load test; scaling the ML service to 3 replicas cut median latency under load by 38% |
+| Live cloud (CCT) | Render free instance, measured from India: warm p50 105 ms / p95 194 ms (49 ms inside the API), 349 MB of 512 MB, cold start 58 s after the 15-minute sleep |
 
 ## Run it locally
 ```bash
 uv sync --all-extras      # Python 3.12 env (CPU-only wheels); full steps in docs/SETUP.md
-make test                 # 68 tests
+make test                 # 69 tests
 make pipeline             # data → features → mining → supervised → unsupervised → final model (needs the dataset)
 make bundle               # package the trained artifacts for serving
 make serve                # API on http://localhost:8000/docs (single process)
@@ -107,7 +108,7 @@ tests/          pytest suite (data, features, mining, ML, serving, live analysis
 | [reports/FinSight_AI_Project_Report.pdf](reports/FinSight_AI_Project_Report.pdf) | Complete report: planning, every phase, results, syllabus mapping, slide outlines |
 | [FinSight_AI_Project_Plan.md](FinSight_AI_Project_Plan.md) | Design spec: architecture, experiments, research questions |
 | [docs/PROGRESS.md](docs/PROGRESS.md) | Phase tracker with acceptance criteria and session log |
-| [docs/DECISIONS.md](docs/DECISIONS.md) | 37 design decisions with evidence |
+| [docs/DECISIONS.md](docs/DECISIONS.md) | 39 design decisions with evidence |
 | [docs/DATA.md](docs/DATA.md) | Data sources, lineage, column roles, leakage list |
 | [docs/SETUP.md](docs/SETUP.md) | Installation and manual setup tasks |
 | [docs/DEPLOY.md](docs/DEPLOY.md) | Render + Vercel deployment, step by step |

@@ -140,3 +140,11 @@ def test_simulate_remote_mode_matches_inprocess():
     a, b = local.post("/analyze/simulate", json=body).json(), remote.post("/analyze/simulate", json=body).json()
     assert a["tiers"] == b["tiers"] and a["kpis"] == b["kpis"]
     assert [r["risk_score"] for r in a["top"]] == [r["risk_score"] for r in b["top"]]
+
+
+def test_detection_benchmark_shape(env):
+    from finsight.serving.simulate import ATTACKS, detection_benchmark
+    df = detection_benchmark(env["ref"], env["be"], env["sc"], seeds=(11,), size=6, background=300)
+    assert len(df) == 2 * len(ATTACKS) and set(df["camouflage"]) == {False, True}
+    assert df["alerted"].between(0, 1).all() and (df["background_false_alert"] < 0.1).all()
+    assert df.loc[~df["camouflage"], "alerted"].min() >= 0.8

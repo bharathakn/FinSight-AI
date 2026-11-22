@@ -78,7 +78,7 @@ export default function NetworkPage() {
   return (
     <>
       <PageHead title="Network explorer" sub="Accounts as nodes, payments as directed edges. Organised fraud (rings, mules, layering) is visible here even when each payment looks normal." />
-      <div className="grid g3">
+      <div className="grid explorer">
         <Card title="Accounts" aside={<Seg value={sort} onChange={setSort} options={[{ value: "pagerank", label: "PageRank" }, { value: "in_degree", label: "In" }, { value: "out_degree", label: "Out" }]} />}>
           <div className="filters"><input type="text" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search account id…" aria-label="Search account id" /></div>
           <Async state={top}>{(t) => (
@@ -90,14 +90,14 @@ export default function NetworkPage() {
             ]} />
           )}</Async>
         </Card>
-        <div className="span2 stack">
-          {!acc && <Card title="Network"><p className="muted">Select an account.</p></Card>}
+        <div className="stack">
+          {!acc && <Card title="Network"><p className="empty">Select an account.</p></Card>}
           {acc && <Async state={net}>{(n) => (
             <div className="stack">
-              <div className="grid g4">
-                <Stat label="Account" value={<span style={{ fontSize: "1.1rem" }}>{n.account_id}</span>} hint={`community ${n.metrics.community_id} · ${n.community_members} members`} />
+              <div className="grid g2">
+                <Stat label="Account" value={<span style={{ fontSize: "1.3rem" }}>{n.account_id}</span>} hint={`community ${n.metrics.community_id} · ${n.community_members} members`} />
                 <Stat label="PageRank" value={n.metrics.pagerank.toFixed(4)} hint={`in ${n.metrics.in_degree} · out ${n.metrics.out_degree}`} />
-                <Stat label="Money in / out" value={<span style={{ fontSize: "1.15rem" }}>{fmt.inr(n.activity.amount_in_inr)} / {fmt.inr(n.activity.amount_out_inr)}</span>}
+                <Stat label="Money in / out" value={<span style={{ fontSize: "1.3rem" }}>{fmt.inr(n.activity.amount_in_inr)} / {fmt.inr(n.activity.amount_out_inr)}</span>}
                       hint={`${n.activity.distinct_senders} senders · ${n.activity.distinct_receivers} receivers`} />
                 <Stat label="Fraudulent transactions" value={fmt.int(n.activity.fraud_involved)} hint={`of ${fmt.int(n.activity.sent + n.activity.received)} involving this account`} />
               </div>
@@ -110,7 +110,7 @@ export default function NetworkPage() {
                   { key: "peer", label: "Account", render: (r) => { const id = r.source === n.account_id ? r.target : r.source; return <a href="#" onClick={(e) => { e.preventDefault(); pick(id); }}>{id}</a>; } },
                   { key: "n", label: "Payments", right: true }, { key: "amount_inr", label: "Amount", right: true, render: (r) => fmt.inr(r.amount_inr) },
                   { key: "fraud", label: "Fraudulent", right: true }, { key: "last", label: "Last", render: (r) => fmt.date(r.last) },
-                ]} max={30} />
+                ]} max={30} tall />
               </Card>
             </div>
           )}</Async>}

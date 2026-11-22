@@ -4,9 +4,9 @@
 > Status legend: ✅ done · 🟡 in progress · ⬜ not started · ⛔ blocked
 
 ## Current state
-- **Current phase:** Phase 9b — Analyze a dataset (upload / demo / attack simulator), then Phase 10 deploy
-- **Blockers:** none. Deployment target is now **Vercel + Render** (D-022). Render/Vercel accounts and the `gh` CLI are needed before Phase 10 (see `docs/SETUP.md` §5).
-- **Last updated:** 2026-11-21
+- **Current phase:** all phases complete; project closed 2026-11-22. Live: dashboard https://fin-sight-ai-bay.vercel.app · API https://finsight-api-r2mw.onrender.com
+- **Open (optional, not planned):** Cloud Run comparison (dropped, D-038); IEEE-CIS / PaySim profiling extras in Phases 1 and 3.
+- **Last updated:** 2026-11-22
 
 ## Status overview
 | # | Phase | Subject | Status | Key output |
@@ -23,7 +23,7 @@
 | 8 | Services + Docker | CCT | ✅ | `src/finsight/serving/`, `services/`, `docker/` (Dockerfile, compose), `deploy/`, `reports/platform_*` |
 | 9 | Dashboard (React SPA) | All | ✅ | `frontend/` (9 pages, `vercel.json`), `reports/figures/dashboard_01…09` |
 | 9b | Analyze a dataset (upload, demo, simulator) | All | ✅ | `finsight/serving/{batch,simulate}.py`, `/analyze*`, `/analyses/*`, Analyze page (home) |
-| 10 | Render + Vercel deploy + report | CCT | ⬜ | live URLs, final report |
+| 10 | Render + Vercel deploy + report | CCT | ✅ | live URLs, `render.yaml`, CI, `reports/platform_render.json`, final report PDF |
 
 ---
 
@@ -146,7 +146,7 @@
 - [x] Pages: Overview · Data Quality · Transaction Explorer · Pattern Mining Lab · ML Lab · Clustering & Anomaly · Network Explorer · Risk Scorer (what-if) · Platform (live status, latency probe, recorded benchmarks)
 - [x] "Waking the backend" state (`WakeGate` polls `/health`, shows elapsed time; wake time reported on the Platform page)
 - [x] Gateway endpoints for the dashboard: `/clusters`, `/accounts`, `/data-quality`, `/platform/benchmarks` (+ PCA embedding in the bundle, gzip); tests incl. remote parity
-- [x] Light + dark themes from the validated palette (D-036); responsive to phone width; every page screenshotted and checked (`reports/figures/dashboard_*.png`)
+- [x] Light + dark themes from the validated palette (D-036; restyled in D-039); responsive to phone width; every page screenshotted and checked (`reports/figures/dashboard_*.png`)
 
 **Acceptance:** `npm run build` produces a static bundle ✅ (type-checked; first load ≈ 60 KB gzipped); every page works against the local gateway ✅ (all 9 rendered with live data, light + dark + 390 px); against Render → Phase 10.
 
@@ -158,18 +158,18 @@ Decisions: one CSV in our transaction format (template; reference data = the ban
 - [x] API: `POST /analyze/upload` (file), `/analyze/demo`, `/analyze/simulate`, `GET /analyses/{id}`, `/analyses/{id}/transactions`, `/analyses/{id}/download`, `/analyze/template.csv`, `/analyze/sample.csv`, `/analyze/schema`
 - [x] Analyze page (new home, `frontend/src/pages/Analyze.tsx`; shareable auto-run links `/?run=demo|sample|simulate&attacks=…`): upload / demo / simulator → results (data quality, KPIs, tiers, top suspicious with reasons, suspicious account groups, rules, anomalies, evaluation, CSV download)
 - [x] Tests `tests/test_analyze.py` (8): exact feature reproduction, held-out rows, every attack ± camouflage, validation/defaults, CSV formula guard, API, remote-mode parity; memory guard (≤ 2 stored analyses, malloc_trim) → peak 436 MB at 24,000 rows
-- [ ] Report chapter (after the user's review of the page)
+- [x] Report chapter (Ch. 15, with the per-attack detection table from `simulate.detection_benchmark` → `reports/analyze_simulation.csv`)
 
 **Acceptance:** analysing the full demo dataset reproduces the Phase 7 test metrics on its test rows ✅ (features identical; held-out PR-AUC 0.8924 without the sanctions override, 0.881 with it because of 2 synthetic-name fuzzy matches); each simulated attack type is flagged (≥ HIGH) for most injected rows ✅ (100% plain; 80–100% camouflaged, shared device 60–80%); a 10,000-row upload completes in < 15 s inside 512 MB ✅ (~3 s; 24,000 rows ~6 s, peak RSS 436 MB).
 
-## Phase 10 — Render + Vercel Deploy + Report ⬜  *(needs GitHub / Render / Vercel accounts, see SETUP §5)*
-- [ ] `render.yaml` (Blueprint: single inprocess service + optional full 5-service variant); `frontend/vercel.json`; GitHub Actions CI (tests)
-- [ ] Deploy: Render backend, Vercel frontend; set env vars (`FINSIGHT_INTERNAL_KEY`, `FINSIGHT_CORS_ORIGINS`, `VITE_API_BASE_URL`)
-- [ ] Measure: cold start, warm p95, image size, RAM; microservices vs inprocess latency
-- [ ] Portability experiment (D-028): same image → Artifact Registry → **Google Cloud Run** (`asia-south1`, min 0 / max 2 instances); `deploy/cloudrun.sh`; same measurement script vs Render; results table in the report
-- [ ] Final report covering all three syllabi; demo rehearsal
+## Phase 10 — Render + Vercel Deploy + Report ✅
+- [x] `render.yaml` (Blueprint: single inprocess service) + `deploy/render-full.yaml` (5 services); `frontend/vercel.json`; GitHub Actions CI (tests, dashboard build, image build + 512 MB smoke test), all green on `main`
+- [x] Deploy: Render backend (Singapore, free), Vercel frontend; env vars `FINSIGHT_CORS_ORIGINS`, generated `FINSIGHT_INTERNAL_KEY`, `VITE_API_BASE_URL`; model bundle from GitHub Releases
+- [x] Measure (`reports/platform_render.json`): warm p50/p95 105/194 ms from India (server 49/137 ms), RSS 349 MB, cold start 58 s; microservices vs inprocess measured locally in Phase 8
+- [ ] ~~Portability experiment on Google Cloud Run (D-028)~~ → not run (D-038): no billing card; `deploy/cloudrun.sh` + `deploy/k8s/` kept as the documented path; cost/scaling models compared in the report
+- [x] Final report covering all three syllabi (Ch. 15 Phase 9b, Ch. 16 deployment + measurements; 75 pages); README + `docs/DEPLOY.md`
 
-**Acceptance:** the public Vercel URL loads and scores a transaction via Render; internal endpoints reject calls without the key.
+**Acceptance:** the public Vercel URL loads and scores a transaction via Render ✅ (headless-browser check of the live site); internal endpoints reject calls without the key ✅ (tests); warm p95 < 200 ms ✅; RSS < 512 MB ✅.
 
 ---
 
@@ -185,3 +185,6 @@ Decisions: one CSV in our transaction format (template; reference data = the ban
 | 2026-11-21 | 7, docs | CCT framing: NIST "why this is cloud" section + Render vs Cloud Run portability experiment planned (D-028; SETUP §5.1c). Phase 7 complete: tuning, stacking + calibration, production = calibrated XGBoost (D-031), risk scorer (D-030, D-032), SHAP + native contributions parity, permutation importance; 9 figures; notebook 06; tests passing. | Phase 8 services + Docker |
 | 2026-11-21 | 8 | Services + Docker complete: serving package (bundle, storage, store, cores, fast path, backends, gateway, apps), 5 service entry points, multi-stage Dockerfile, Compose (remote + monolith), measure + load test + platform report; latency 138 → 21 ms p50 after profiling (D-034); sanctions cache + keep-alive fixes from the load test (D-035); 58 tests passing. | Phase 9 React dashboard |
 | 2026-11-21 | 9 | Dashboard complete: React + Vite + TS SPA, 9 pages, Plotly (lazy), validated light/dark palette, deterministic SVG ego network, wake gate; 4 new gateway endpoints + PCA embedding in the bundle; headless-Chrome screenshots of every page (light, dark, mobile) reviewed and fixed; 60 tests passing. Docker images must be rebuilt (`make bundle && make docker-build`) before deploying. | Phase 10: accounts → render.yaml, Vercel, CI, Cloud Run comparison, final report |
+| 2026-11-21 | 9b | Live analysis: batch pipeline (history + batch → unchanged feature code), upload / demo / attack simulator API + Analyze home page, in-memory store with memory guard; 8 tests. | Phase 10 deploy |
+| 2026-11-21/22 | 10 | Deployed: Render (API, Docker, Blueprint) + Vercel (SPA); CI green; fixed the missing build-time API URL and CORS origin; demo results cached (35 s → 0.09 s on repeat); README rewritten, `docs/DEPLOY.md`. Measured live: p95 194 ms, 349 MB, cold start 58 s. Cloud Run comparison dropped (D-038). Simulator benchmark over 3 seeds; report Ch. 15–16 rewritten (73 pages); 69 tests passing. | Project closed. Optional: Cloud Run if a billing card becomes available |
+| 2026-11-22 | 9 (UI) | Re-themed the whole dashboard (D-039): tokens, self-hosted fonts, icons, new Analyze layout, phone menu, light by default. Fixed text contrast, phone overflow, clipped tables, dark cluster colours and a duplicated chart click handler. Verified with 105 page renders + 31 interaction checks; dashboard figures and report regenerated. Pushed to `main` at the user's request (Vercel and Render auto-deploy from it). | Project closed |

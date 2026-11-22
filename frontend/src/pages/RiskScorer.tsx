@@ -27,7 +27,7 @@ function Component({ label, value, weight, hint }: { label: string; value: numbe
   return (
     <div style={{ marginBottom: 10 }}>
       <div className="small" style={{ display: "flex", justifyContent: "space-between" }}><span>{label} <span className="muted">× {weight}</span></span><b className="num">{fmt.pct(value)}</b></div>
-      <div className="bar-inline"><span style={{ width: `${100 * value}%`, background: "var(--accent)" }} /></div>
+      <div className="bar-inline"><span style={{ width: `${100 * value}%`, background: "var(--mark)" }} /></div>
       <div className="small muted">{hint}</div>
     </div>
   );
@@ -98,8 +98,8 @@ export default function RiskScorerPage() {
                 {res.decision.alert ? "Alert: an analyst should review this payment." : res.tier === "MEDIUM" ? "Review band: low-priority check." : "Allow."}
                 {res.overrides_applied.length > 0 && <> Overrides: {res.overrides_applied.join(", ")} (base score {res.base_score.toFixed(0)}).</>}
               </div>
-              <div className="bar-inline" style={{ marginTop: 12, height: 10, position: "relative" }}><span style={{ width: `${res.risk_score}%`, background: res.tier === "CRITICAL" ? "var(--critical)" : "var(--accent)" }} /></div>
-              <div className="small muted num" style={{ display: "flex", justifyContent: "space-between" }}>
+              <div className="bar-inline" style={{ marginTop: 12, height: 10, position: "relative" }}><span style={{ width: `${res.risk_score}%`, background: res.tier === "CRITICAL" ? "var(--critical)" : "var(--mark)" }} /></div>
+              <div className="small muted num cutoffs">
                 <span>0</span><span>MEDIUM {res.cutoffs.MEDIUM.toFixed(0)}</span><span>HIGH {res.cutoffs.HIGH.toFixed(0)}</span><span>CRITICAL {res.cutoffs.CRITICAL.toFixed(0)}</span><span>100</span>
               </div>
               <dl className="kv" style={{ marginTop: 12 }}>

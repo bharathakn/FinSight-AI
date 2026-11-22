@@ -63,12 +63,12 @@ export default function MLLabPage() {
                     hovertemplate: "%{y} · %{x}<br>test PR-AUC <b>%{z:.3f}</b><extra></extra>", colorbar: { thickness: 10, outlinewidth: 0 } }];
                 }} layout={() => {
                   // cell labels: ink chosen per cell from its position on the ramp (the ramp runs the other way in dark mode)
-                  const dark = getComputedStyle(document.documentElement).colorScheme === "dark";
+                  const low = css("--seq-low-ink"), high = css("--seq-high-ink"), flip = Number(css("--seq-flip"));
                   const ann = MODELS.flatMap((m) => ["A", "B", "C"].map((e) => {
                     const v = Number(grid.find((x) => x.model === m && x.exp === e)!.test_pr_auc);
                     const t = (v - 0.4) / 0.55;
                     return { x: EXP[e], y: NAME[m], text: v.toFixed(3), showarrow: false,
-                      font: { size: 12, color: (dark ? t > 0.55 : t < 0.55) ? "#0b0b0b" : "#ffffff" } };
+                      font: { size: 12, color: t < flip ? low : high } };
                   }));
                   return { showlegend: false, annotations: ann, yaxis: { autorange: "reversed", gridcolor: "rgba(0,0,0,0)" }, xaxis: { gridcolor: "rgba(0,0,0,0)" } };
                 }} />
@@ -79,14 +79,14 @@ export default function MLLabPage() {
                 <Plot height={300} data={() => [
                   { type: "bar", name: "Default (Phase 5)", y: c.phase7_tuning.map((r) => NAME[String(r.model)]), x: c.phase7_tuning.map((r) => r.default_cv_pr_auc), orientation: "h", marker: { color: css("--baseline") },
                     hovertemplate: "%{y} default: <b>%{x:.3f}</b><extra></extra>" },
-                  { type: "bar", name: "Tuned", y: c.phase7_tuning.map((r) => NAME[String(r.model)]), x: c.phase7_tuning.map((r) => r.tuned_cv_pr_auc), orientation: "h", marker: { color: css("--s1") },
+                  { type: "bar", name: "Tuned", y: c.phase7_tuning.map((r) => NAME[String(r.model)]), x: c.phase7_tuning.map((r) => r.tuned_cv_pr_auc), orientation: "h", marker: { color: css("--mark") },
                     customdata: c.phase7_tuning.map((r) => [Number(r.paired_mean_diff), Number(r.paired_t_pvalue)]),
                     hovertemplate: "%{y} tuned: <b>%{x:.3f}</b> (%{customdata[0]:+.3f}, p=%{customdata[1]:.3f})<extra></extra>" },
                 ]} layout={() => ({ barmode: "group", xaxis: { range: [0.7, 0.95], title: { text: "CV PR-AUC" } }, legend: { orientation: "h", y: 1.12, x: 0 } })} />
               </Card>
               <Card title="Final candidates (test, scored once)" note="Stacking did not beat tuned XGBoost; the calibrated XGBoost was chosen on validation (D-031).">
                 <Plot height={300} data={() => [{ type: "bar", orientation: "h", y: fin.map((r) => NAME[String(r.model)] ?? r.model), x: fin.map((r) => r.test_pr_auc),
-                  marker: { color: fin.map((r) => (r.model === c.production.production_model ? css("--s2") : css("--s1"))) },
+                  marker: { color: fin.map((r) => (r.model === c.production.production_model ? css("--s2") : css("--mark"))) },
                   text: fin.map((r) => Number(r.test_pr_auc).toFixed(3) + (r.model === c.production.production_model ? "  production" : "")), textposition: "outside", cliponaxis: false,
                   customdata: fin.map((r) => [Number(r.test_f1), Number(r.val_pr_auc)]),
                   hovertemplate: "%{y}<br>test PR-AUC <b>%{x:.3f}</b> · F1 %{customdata[0]:.3f} · val %{customdata[1]:.3f}<extra></extra>" }]}
@@ -96,7 +96,7 @@ export default function MLLabPage() {
             <div className="grid g3">
               <Card title="What drives predictions (SHAP)" note="Mean |SHAP| in log-odds on the test set (tuned XGBoost).">
                 <Plot height={340} data={() => [{ type: "bar", orientation: "h", y: shap.map((r) => fmt.feature(r.feature)), x: shap.map((r) => r.mean_abs_shap),
-                  marker: { color: css("--s5") }, hovertemplate: "%{y}<br>mean |SHAP| <b>%{x:.3f}</b><extra></extra>" }]} layout={() => ({ showlegend: false })} />
+                  marker: { color: css("--mark") }, hovertemplate: "%{y}<br>mean |SHAP| <b>%{x:.3f}</b><extra></extra>" }]} layout={() => ({ showlegend: false })} />
               </Card>
               <Card title="Recall per fraud scenario" note="Production model on the test set (validation threshold). Test counts are 16–48 per scenario.">
                 <Plot height={340} data={() => [{ type: "bar", orientation: "h", y: scen.map((r) => r.scenario), x: scen.map((r) => r.flag_rate), marker: { color: css("--s2") },
@@ -106,7 +106,7 @@ export default function MLLabPage() {
               </Card>
               <Card title="Learning curve" aside={<Seg value={lcModel} onChange={setLcModel} options={[{ value: "xgboost", label: "XGBoost" }, { value: "decision_tree", label: "Tree" }]} />}
                     note="Gap between training and CV = variance; a rising CV curve means more data would still help.">
-                <Plot height={300} data={() => [["train", "Training", "--s1"], ["cv", "Cross-validation", "--s2"]].map(([k, n, col]) => ({
+                <Plot height={300} data={() => [["train", "Training", "--mark"], ["cv", "Cross-validation", "--s2"]].map(([k, n, col]) => ({
                   type: "scatter", mode: "lines+markers", name: n, x: lc.map((r) => r.n_train), y: lc.map((r) => (r as unknown as Record<string, number>)[`${k}_mean`]),
                   line: { color: css(col), width: 2 }, hovertemplate: `${n}: <b>%{y:.3f}</b> at %{x:,} rows<extra></extra>` }))}
                   layout={() => ({ xaxis: { title: { text: "training rows" } }, yaxis: { range: [0.5, 1.02], title: { text: "PR-AUC" } }, legend: { orientation: "h", y: 1.12, x: 0 } })} />

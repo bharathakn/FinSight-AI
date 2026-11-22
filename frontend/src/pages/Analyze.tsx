@@ -4,6 +4,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { api, ApiError, fmt, useApi } from "../api";
 import { css, Plot } from "../components/Plot";
+import { Icon, IconName } from "../components/Icon";
 import { Card, ErrorBox, LabelBadge, PageHead, Stat, Table, TierBadge } from "../components/ui";
 
 type Row = { transaction_id: string; timestamp: string; channel: string; amount_inr: number; sender_account_id: string; receiver_account_id: string;
@@ -35,7 +36,8 @@ type Detail = { risk_score: number; tier: string; components: Record<string, num
 
 const ATTACK_LABEL: Record<string, string> = { fraud_ring: "Fraud ring", mule_chain: "Mule chain", burst: "Burst", structuring: "Structuring", shared_device: "Shared device" };
 const TIER_ORDER = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
-const TIER_HEX: Record<string, string> = { LOW: "#cde2fb", MEDIUM: "#6da7ec", HIGH: "#1c5cab", CRITICAL: "#d03b3b" };
+const TIER_VAR: Record<string, string> = { LOW: "--tier-low", MEDIUM: "--tier-medium", HIGH: "--tier-high", CRITICAL: "--critical" };
+const SIGNALS: [IconName, string][] = [["model", "Calibrated ML model"], ["cluster", "Anomaly detector"], ["network", "Network red flags"], ["pattern", "Mined rules"], ["quality", "Sanctions screening"]];
 
 // ---------------------------------------------------------------- input panels
 function Inputs({ schema, busy, onRun }: { schema: Schema | null; busy: boolean; onRun: (kind: string, run: () => Promise<Summary>) => void }) {
@@ -49,52 +51,62 @@ function Inputs({ schema, busy, onRun }: { schema: Schema | null; busy: boolean;
   const input = useRef<HTMLInputElement>(null);
   const toggle = (a: string) => setAttacks(attacks.includes(a) ? attacks.filter((x) => x !== a) : [...attacks, a]);
   return (
-    <div className="grid g3">
-      <Card title="1 · Demo dataset" note="10,000 synthetic Indian payments (August 2026) with ground-truth labels, so the page can also show how accurate the model is. On the free cloud server the first run takes about half a minute; after that the demo results are cached and open instantly.">
-        <p className="small ink2">Run the complete pipeline (validation → features → model, anomaly detector, network flags, rules, sanctions) on the built-in dataset.</p>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button className="primary" disabled={busy} onClick={() => onRun("demo dataset (10,000)", () => api.post<Summary>("/analyze/demo", {}, 120000))}>Analyze all 10,000</button>
-          <button disabled={busy} onClick={() => onRun("demo sample (2,000)", () => api.post<Summary>("/analyze/demo", { sample: 2000 }, 120000))}>Quick sample (2,000)</button>
-        </div>
-      </Card>
-      <Card title="2 · Upload a CSV" note={schema ? `Up to ${fmt.int(schema.limits.max_rows)} rows / ${schema.limits.max_megabytes.toFixed(0)} MB. Files are processed in memory and never stored.` : undefined}>
-        <div onDragOver={(e) => { e.preventDefault(); setDrag(true); }} onDragLeave={() => setDrag(false)}
-             onDrop={(e) => { e.preventDefault(); setDrag(false); if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]); }}
-             onClick={() => input.current?.click()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter") input.current?.click(); }}
-             style={{ border: `2px dashed ${drag ? "var(--accent)" : "var(--baseline)"}`, borderRadius: 10, padding: "16px 12px", textAlign: "center", cursor: "pointer", background: drag ? "var(--surface-2)" : "transparent" }}>
-          <div className="small"><b>{file ? file.name : "Drop a CSV here or click to choose"}</b></div>
-          <div className="small muted">{file ? `${(file.size / 1024).toFixed(0)} KB` : "transactions in the FinSight format"}</div>
-          <input ref={input} type="file" accept=".csv,text/csv" hidden onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
-        </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10, alignItems: "center" }}>
-          <button className="primary" disabled={busy || !file} onClick={() => file && onRun(`upload: ${file.name}`, () => api.upload<Summary>("/analyze/upload", file))}>Analyze file</button>
-          <a className="small" href={api.url("/analyze/template.csv")}>Template</a>
-          <a className="small" href={api.url("/analyze/sample.csv", { rows: 1000 })}>Sample (1,000 rows)</a>
-          <a className="small" href="#" onClick={(e) => { e.preventDefault(); setShowSchema(!showSchema); }}>{showSchema ? "Hide" : "Show"} columns</a>
-        </div>
-        {showSchema && schema && (
-          <div className="small" style={{ marginTop: 10 }}>
-            <b>Required:</b> {schema.required.map((c) => <code key={c.column} title={c.description} style={{ marginRight: 4 }}>{c.column}</code>)}
-            <div style={{ marginTop: 6 }}><b>Optional</b> (filled from the bank's records if missing):</div>
-            <ul style={{ margin: "4px 0", paddingLeft: 18 }}>{schema.optional.map((c) => <li key={c.column}><code>{c.column}</code> <span className="muted">— default: {c.default_if_missing}</span></li>)}</ul>
-            <div><b>Labels</b> (optional, evaluation only): {schema.labels.map((c) => <code key={c.column} style={{ marginRight: 4 }}>{c.column}</code>)}</div>
+    <div className="grid intake">
+      <div className="stack">
+        <Card title="Upload your transactions" note={schema ? `Up to ${fmt.int(schema.limits.max_rows)} rows / ${schema.limits.max_megabytes.toFixed(0)} MB. Files are processed in memory and never stored.` : undefined}>
+          <div className={"drop" + (drag ? " over" : "")} role="button" tabIndex={0} aria-label={file ? `Selected file ${file.name}. Choose another file` : "Choose a CSV file"}
+               onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
+               onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDrag(false); }}
+               onDrop={(e) => { e.preventDefault(); setDrag(false); if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]); }}
+               onClick={() => input.current?.click()}
+               onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); input.current?.click(); } }}>
+            <span className="tile large"><Icon name="file" /></span>
+            <div className="drop-title">{file ? file.name : "Drop a CSV of payments here"}</div>
+            <div className="small muted">{file ? `${(file.size / 1024).toFixed(0)} KB` : "transactions in the FinSight format"}</div>
+            <span className="btn" aria-hidden="true">{file ? "Choose another file" : "Choose file"}</span>
+            <input ref={input} type="file" accept=".csv,text/csv" hidden onClick={(e) => e.stopPropagation()} onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
           </div>
-        )}
-      </Card>
-      <Card title="3 · Attack simulator" note="A normal day of payments (31 Aug) with the chosen attacks injected and labelled, so you can see whether the system catches them.">
-        <div style={{ display: "grid", gap: 4 }}>
+          <div className="actions" style={{ marginTop: 14 }}>
+            <button className="primary" disabled={busy || !file} onClick={() => file && onRun(`upload: ${file.name}`, () => api.upload<Summary>("/analyze/upload", file))}>Analyze file</button>
+            <a className="small" href={api.url("/analyze/template.csv")}>Template</a>
+            <a className="small" href={api.url("/analyze/sample.csv", { rows: 1000 })}>Sample (1,000 rows)</a>
+            <button className="link" aria-expanded={showSchema} onClick={() => setShowSchema(!showSchema)}>{showSchema ? "Hide" : "Show"} columns</button>
+          </div>
+          {showSchema && schema && (
+            <div className="small" style={{ marginTop: 14 }}>
+              <b>Required:</b> {schema.required.map((c) => <code key={c.column} title={c.description} style={{ marginRight: 4 }}>{c.column}</code>)}
+              <div style={{ marginTop: 6 }}><b>Optional</b> (filled from the bank's records if missing):</div>
+              <ul style={{ margin: "4px 0", paddingLeft: 18 }}>{schema.optional.map((c) => <li key={c.column}><code>{c.column}</code> <span className="muted">— default: {c.default_if_missing}</span></li>)}</ul>
+              <div><b>Labels</b> (optional, evaluation only): {schema.labels.map((c) => <code key={c.column} style={{ marginRight: 4 }}>{c.column}</code>)}</div>
+            </div>
+          )}
+        </Card>
+        <Card title="No file? Use the demo dataset" icon="data" warm
+              note="On the free cloud server the first run takes about half a minute; after that the demo results are cached and open instantly.">
+          <p className="small ink2">10,000 synthetic Indian payments (August 2026) with ground-truth labels. Runs the complete pipeline and also shows how accurate the model is.</p>
+          <div className="actions">
+            <button className="primary" disabled={busy} onClick={() => onRun("demo dataset (10,000)", () => api.post<Summary>("/analyze/demo", {}, 120000))}>Analyze all 10,000</button>
+            <button disabled={busy} onClick={() => onRun("demo sample (2,000)", () => api.post<Summary>("/analyze/demo", { sample: 2000 }, 120000))}>Quick sample (2,000)</button>
+          </div>
+        </Card>
+      </div>
+      <Card title="Simulate an attack" icon="attack" warm note="A normal day of payments (31 Aug) with the chosen attacks injected and labelled, so you can see whether the system catches them.">
+        <div className="attacks">
           {schema && Object.entries(schema.attacks).map(([k, d]) => (
-            <label key={k} className="check" title={d}><input type="checkbox" checked={attacks.includes(k)} onChange={() => toggle(k)} /> <b>{ATTACK_LABEL[k]}</b> <span className="muted">— {d.split(": ")[1] ?? d}</span></label>
+            <label key={k} className={"attack" + (attacks.includes(k) ? " on" : "")} title={d}>
+              <input type="checkbox" checked={attacks.includes(k)} onChange={() => toggle(k)} />
+              <span><b>{ATTACK_LABEL[k]}</b><small>{d.split(": ")[1] ?? d}</small></span>
+            </label>
           ))}
         </div>
-        <div className="filters" style={{ marginTop: 10, marginBottom: 8 }}>
+        <div className="filters" style={{ marginTop: 14, marginBottom: 6 }}>
           <label className="field">Intensity: {size}<input type="range" min={3} max={40} value={size} onChange={(e) => setSize(Number(e.target.value))} /></label>
           <label className="field">Normal payments
             <select value={bg} onChange={(e) => setBg(Number(e.target.value))}><option value={500}>500</option><option value={1500}>1,500</option><option value={5000}>5,000</option></select></label>
         </div>
         <label className="check" title="Each payment looks normal on behaviour (known device and payee, near home); only the network pattern gives it away">
           <input type="checkbox" checked={camo} onChange={(e) => setCamo(e.target.checked)} /> Camouflage (looks normal per payment)</label>
-        <div style={{ marginTop: 10 }}>
+        <div style={{ marginTop: 12 }}>
           <button className="primary" disabled={busy || attacks.length === 0}
             onClick={() => onRun(`simulation: ${attacks.map((a) => ATTACK_LABEL[a]).join(" + ")}${camo ? " (camouflaged)" : ""}`,
               () => api.post<Summary>("/analyze/simulate", { attacks, size, camouflage: camo, background: bg, seed: Math.floor(Math.random() * 1e6) }, 120000))}>Run simulation</button>
@@ -128,9 +140,9 @@ function Evaluation({ e }: { e: Eval }) {
   const Box = ({ x, title }: { x: Eval; title: string }) => (
     <div>
       <h3>{title}</h3>
-      <div className="grid g4" style={{ gap: 8 }}>
+      <div className="metrics">
         {[["PR-AUC", x.pr_auc], ["Precision", x.precision], ["Recall", x.recall], ["F1", x.f1]].map(([l, v]) => (
-          <div key={l as string}><div className="small muted">{l}</div><div style={{ fontSize: "1.35rem", fontWeight: 650 }} className="num">{(v as number).toFixed(3)}</div></div>))}
+          <div key={l as string}><div className="small muted">{l}</div><div className="value">{(v as number).toFixed(3)}</div></div>))}
       </div>
       <div className="small ink2 num" style={{ marginTop: 6 }}>{x.tp} frauds caught · {x.fn} missed · {x.fp} false alarms · {fmt.int(x.tn)} correctly allowed ({x.alert_rule})</div>
     </div>
@@ -279,7 +291,7 @@ function SuspiciousTable({ s, onPick }: { s: Summary; onPick: (r: Row) => void }
             { key: "transaction_id", label: "Transaction", render: (r) => <span className="small">{r.transaction_id}</span> },
             { key: "amount_inr", label: "Amount", right: true, render: (r) => fmt.inr(r.amount_inr) },
             { key: "parties", label: "From → to", render: (r) => <span className="small">{r.sender_account_id.replace("ACC_IND_", "")} → {r.receiver_account_id.replace("ACC_IND_", "")}</span> },
-            { key: "network_flags", label: "Network flags", render: (r) => <span className="small">{r.network_flags.replace(/_/g, " ").toLowerCase() || "—"}</span> },
+            { key: "network_flags", label: "Network flags", render: (r) => <span className="small">{r.network_flags.replace(/_/g, " ").replace(/,/g, ", ").toLowerCase() || "—"}</span> },
             ...(hasLabels ? [{ key: "risk_label", label: "Truth", render: (r: Row) => (r.risk_label ? <LabelBadge label={r.risk_label} /> : "—") }] : []),
           ]} />
           <div className="filters" style={{ marginTop: 8, marginBottom: 0 }}>
@@ -298,12 +310,12 @@ function Results({ s }: { s: Summary }) {
   useEffect(() => setPick(null), [s.analysis_id]);
   const groups = s.groups;
   return (
-    <div className="stack" style={{ marginTop: 16 }}>
-      <div className="topbar" style={{ marginBottom: 0 }}>
-        <div><h2 style={{ margin: 0 }}>Results</h2>
+    <div className="stack">
+      <div className="topbar results-head">
+        <div><h2>Results</h2>
           <div className="small ink2">{fmt.int(s.kpis.transactions)} transactions analysed in {s.timings.total_seconds.toFixed(1)} s
             (features {s.timings.feature_seconds}s · scoring {s.timings.score_seconds}s · {fmt.int(s.timings.history_rows_used)} history rows as context) · results kept 30 min</div></div>
-        <a href={api.url(`/analyses/${s.analysis_id}/download.csv`)}><button>Download scored CSV</button></a>
+        <a className="btn" href={api.url(`/analyses/${s.analysis_id}/download.csv`)}><Icon name="download" />Download scored CSV</a>
       </div>
       <div className="grid g4">
         <Stat label="Transactions" value={fmt.int(s.kpis.transactions)} hint={`${fmt.int(s.kpis.accounts)} accounts · ${fmt.inr(s.kpis.amount_total_inr)}`} />
@@ -313,13 +325,13 @@ function Results({ s }: { s: Summary }) {
       </div>
       <div className="grid g2">
         <Card title="Risk tiers" note={`MEDIUM ≥ ${s.cutoffs.MEDIUM.toFixed(0)} (review) · HIGH ≥ ${s.cutoffs.HIGH.toFixed(0)} (alert) · CRITICAL ≥ ${s.cutoffs.CRITICAL.toFixed(0)}`}>
-          <Plot height={260} data={() => [{ type: "bar", x: TIER_ORDER, y: TIER_ORDER.map((t) => s.tiers[t]), marker: { color: TIER_ORDER.map((t) => TIER_HEX[t]) },
+          <Plot height={260} data={() => [{ type: "bar", x: TIER_ORDER, y: TIER_ORDER.map((t) => s.tiers[t]), marker: { color: TIER_ORDER.map((t) => css(TIER_VAR[t])) },
             text: TIER_ORDER.map((t) => fmt.int(s.tiers[t])), textposition: "outside", cliponaxis: false, hovertemplate: "%{x}: <b>%{y:,}</b><extra></extra>" }]}
             layout={() => ({ showlegend: false, yaxis: { title: { text: "transactions" }, rangemode: "tozero" } })} />
         </Card>
         <Card title="Transactions over time" aside="alerts vs the rest">
           <Plot height={260} data={() => [
-            { type: "bar", name: "Not alerted", x: s.timeline.map((d) => d.time), y: s.timeline.map((d) => d.n - d.alerts), marker: { color: css("--s1") }, hovertemplate: "%{x}<br>%{y} not alerted<extra></extra>" },
+            { type: "bar", name: "Not alerted", x: s.timeline.map((d) => d.time), y: s.timeline.map((d) => d.n - d.alerts), marker: { color: css("--mark") }, hovertemplate: "%{x}<br>%{y} not alerted<extra></extra>" },
             { type: "bar", name: "Alerted", x: s.timeline.map((d) => d.time), y: s.timeline.map((d) => d.alerts), marker: { color: css("--s2") }, hovertemplate: "%{x}<br><b>%{y}</b> alerted<extra></extra>" },
           ]} layout={() => ({ barmode: "stack", bargap: 0.1, legend: { orientation: "h", y: 1.12, x: 0 } })} />
         </Card>
@@ -349,13 +361,13 @@ function Results({ s }: { s: Summary }) {
         </Card>
       </div>
       <div className="grid g2">
-        <Card title="Most common rules among alerts" note="Phase 4 association rules (→ FRAUDULENT) that fired on alerted payments.">
+        <Card title="Most common rules among alerts" note="Phase 4 association rules (→ FRAUDULENT) that fired on alerted payments, counted by the rule that fired first.">
           {s.rules.length ? (
             <Plot height={Math.max(160, 30 * s.rules.length + 40)} data={() => {
               const r = [...s.rules].reverse();
               return [{ type: "bar", orientation: "h", y: r.map((x) => x.rule.replace(" → FRAUDULENT", "")), x: r.map((x) => x.alerts), marker: { color: css("--s2") },
                 hovertemplate: "%{y}<br><b>%{x}</b> alerts<extra></extra>" }];
-            }} layout={() => ({ showlegend: false, xaxis: { title: { text: "alerts (rule fired first)" } } })} />
+            }} layout={() => ({ showlegend: false, xaxis: { title: { text: "alerts" } } })} />
           ) : <p className="small muted">No mined rule fired on the alerts.</p>}
         </Card>
         <Card title="Unusual but not alerted" aside={`${fmt.int(s.anomalies.count)} transactions`} note={s.anomalies.note}>
@@ -408,14 +420,15 @@ export default function AnalyzePage() {
   };
   return (
     <>
-      <PageHead title="Analyze transactions"
+      <PageHead className="home-head" title="See the risk, follow the money, know why."
         sub="Run FinSight on a batch of payments: it checks the data, builds behavioural and network features, scores every transaction 0–100 with the calibrated model, the anomaly detector, network red flags, mined rules and sanctions screening, then shows what it found." />
+      <ul className="signals" aria-label="Signals behind every score">{SIGNALS.map(([icon, label]) => <li key={label}><Icon name={icon} />{label}</li>)}</ul>
       <Inputs schema={schema.data} busy={!!busy} onRun={run} />
-      {busy && <div className="card" style={{ marginTop: 14 }} role="status"><b>Analyzing {busy}…</b> <span className="muted num">{elapsed.toFixed(1)} s</span>
-        <div className="small muted">validate → defaults → features (history + batch) → model, anomaly, network, rules, sanctions → summary</div></div>}
+      {busy && <div className="card progress" role="status"><span className="spinner" aria-hidden /><div><b>Analyzing {busy}…</b> <span className="muted num">{elapsed.toFixed(1)} s</span>
+        <div className="small muted">validate → defaults → features (history + batch) → model, anomaly, network, rules, sanctions → summary</div></div></div>}
       {err && <div style={{ marginTop: 14 }}><ErrorBox error={err} /></div>}
-      <div ref={resultsRef}>{res && !busy && <Results s={res} />}</div>
-      {!res && !busy && <p className="small muted" style={{ marginTop: 14 }}>Start with the demo dataset or the attack simulator; results appear here. The other pages (left menu) explore the demo dataset and the experiments in depth.</p>}
+      <div ref={resultsRef} className="results">{res && !busy && <Results s={res} />}</div>
+      {!res && !busy && <p className="empty" style={{ marginTop: 18 }}>Start with the demo dataset or the attack simulator; results appear here. The other pages in the menu explore the demo dataset and the experiments in depth.</p>}
     </>
   );
 }

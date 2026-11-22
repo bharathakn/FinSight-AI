@@ -4,23 +4,25 @@ import { useEffect, useRef, useState } from "react";
 
 type PlotlyLib = (typeof import("plotly.js-dist-min"))["default"];
 let plotlyPromise: Promise<PlotlyLib> | null = null;
-const loadPlotly = () => (plotlyPromise ??= import("plotly.js-dist-min").then((m) => (m.default ?? (m as unknown as PlotlyLib))));
+// Plotly measures text when it draws, so the chart font must be ready first (a failed font load falls back).
+const loadPlotly = () => (plotlyPromise ??= Promise.all([
+  import("plotly.js-dist-min"),
+  document.fonts.load('12px "Inter Variable"').catch(() => undefined),
+]).then(([m]) => (m.default ?? (m as unknown as PlotlyLib))));
 
 export function css(name: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
 
-/** Re-render key that changes when the theme changes (OS setting or the toggle). */
-export function useThemeKey(): string {
-  const [key, setKey] = useState(() => document.documentElement.dataset.theme ?? "auto");
+/** Re-render key that changes with the resolved theme (theme.ts writes it for both the toggle and the OS setting). */
+export function useThemeKey(): string | undefined {
+  const [key, setKey] = useState(() => document.documentElement.dataset.theme);
   useEffect(() => {
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const update = () => setKey((document.documentElement.dataset.theme ?? "auto") + (mq.matches ? "-d" : "-l"));
+    const update = () => setKey(document.documentElement.dataset.theme);
     update();
-    mq.addEventListener("change", update);
     const obs = new MutationObserver(update);
     obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-    return () => { mq.removeEventListener("change", update); obs.disconnect(); };
+    return () => obs.disconnect();
   }, []);
   return key;
 }
@@ -33,11 +35,11 @@ export function baseLayout(extra: Record<string, unknown> = {}): Record<string, 
   const axis = { gridcolor: grid, linecolor: base, zerolinecolor: base, tickfont: { color: ink2, size: 11 }, title: { font: { color: ink2, size: 12 } }, automargin: true };
   const e = extra as Record<string, Record<string, unknown> | undefined>;
   return {
-    paper_bgcolor: surface, plot_bgcolor: surface, font: { family: "system-ui, -apple-system, Segoe UI, sans-serif", color: css("--ink"), size: 12 },
+    paper_bgcolor: surface, plot_bgcolor: surface, font: { family: css("--font-body"), color: css("--ink"), size: 12 },
     margin: { l: 10, r: 14, t: 10, b: 10 }, showlegend: true,
     legend: { orientation: "h", y: -0.2, x: 0, font: { color: ink2, size: 11 } },
     hoverlabel: { bgcolor: surface, bordercolor: base, font: { color: css("--ink"), size: 12 } },
-    colorway: series(), bargap: 0.25,
+    colorway: series(), bargap: 0.25, barcornerradius: 3,
     ...extra,
     xaxis: { ...axis, ...(e.xaxis ?? {}) },
     yaxis: { ...axis, ...(e.yaxis ?? {}) },
@@ -55,9 +57,10 @@ export function Plot({ data, layout, height = 300, onClick }: {
     let alive = true;
     loadPlotly().then((Plotly) => {
       if (!alive || !ref.current) return;
-      const el = ref.current as HTMLDivElement & { on?: (ev: string, cb: (e: { points: { customdata?: unknown; x?: unknown; y?: unknown }[] }) => void) => void };
+      const el = ref.current as HTMLDivElement & { removeAllListeners?: (ev: string) => void; on?: (ev: string, cb: (e: { points: { customdata?: unknown; x?: unknown; y?: unknown }[] }) => void) => void };
       Plotly.react(el, data() as never, { ...baseLayout(layout ? layout() : {}), height } as never,
         { displaylogo: false, responsive: true, displayModeBar: false } as never);
+      el.removeAllListeners?.("plotly_click");          // this effect runs on every render: keep one handler
       if (onClick && el.on) el.on("plotly_click", (e) => e.points?.[0] && onClick(e.points[0]));
     }).catch(() => setFailed(true));
     return () => { alive = false; };

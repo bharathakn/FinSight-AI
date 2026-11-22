@@ -52,7 +52,7 @@ export default function ClustersPage() {
                   <div key={p.cluster} style={{ padding: "8px 0", borderBottom: "1px solid var(--grid)" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
                       <b className="small"><span className="dot" style={{ background: `var(--s${4 + p.cluster})`, marginRight: 6 }} />{p.cluster} · {CLUSTER_NAME[p.cluster]}</b>
-                      <span className="small num">{fmt.int(p.size)} rows</span>
+                      <span className="small num" style={{ whiteSpace: "nowrap" }}>{fmt.int(p.size)} rows</span>
                     </div>
                     <div className="small ink2">fraud <b>{fmt.pct(p.fraud_rate, 0)}</b> · {p.top_features.map((f) => `${fmt.feature(f.feature)} ${f.z > 0 ? "+" : ""}${f.z}σ`).join(" · ")}</div>
                     <div className="bar-inline" style={{ marginTop: 4 }}><span style={{ width: `${100 * p.fraud_rate}%`, background: "var(--s2)" }} /></div>
@@ -69,7 +69,7 @@ export default function ClustersPage() {
                     // neutral inks: on this page the categorical hues already mean labels (1–3) and clusters (4–7)
                     return { type: "scatter", mode: "lines+markers", name: e === "B" ? "Exp B (no network)" : "Exp C (+ network)", x: r.map((x) => x.k), y: r.map((x) => x[m]),
                       line: { color: css(i ? "--ink" : "--muted"), width: 2, dash: i ? "solid" : "dash" }, hovertemplate: `K=%{x}: <b>%{y:.3f}</b><extra>Exp ${e}</extra>` };
-                  })} layout={() => ({ xaxis: { title: { text: "K" }, dtick: 1 }, legend: { orientation: "h", y: 1.18, x: 0 } })} />
+                  })} layout={() => ({ xaxis: { title: { text: "K" }, dtick: 1 }, legend: { orientation: "h", y: 1.02, yanchor: "bottom", x: 0 }, margin: { l: 10, r: 14, t: 52, b: 10 } })} />
                 </Card>
               ))}
               <Card title="Anomaly detectors" aside={<Seg value={metric} onChange={setMetric} options={[{ value: "pr_auc", label: "PR-AUC" }, { value: "p95_borderline_flag_rate", label: "Borderline" }]} />}

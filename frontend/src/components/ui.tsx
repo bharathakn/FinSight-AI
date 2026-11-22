@@ -1,10 +1,23 @@
 import { ReactNode, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { ApiError, API_BASE, api } from "../api";
+import { Icon, IconName } from "./Icon";
 
-export function Card({ title, aside, children, note, className = "" }: { title?: ReactNode; aside?: ReactNode; children: ReactNode; note?: ReactNode; className?: string }) {
+export function Brand({ onClick }: { onClick?: () => void }) {
+  return <Link to="/" className="brand" onClick={onClick}><span className="mark"><Icon name="logo" /></span>FinSight AI</Link>;
+}
+
+export function Card({ title, icon, warm, aside, children, note, className = "" }: {
+  title?: ReactNode; icon?: IconName; warm?: boolean; aside?: ReactNode; children: ReactNode; note?: ReactNode; className?: string;
+}) {
   return (
     <section className={"card " + className}>
-      {title && <h2><span>{title}</span>{aside && <span className="small muted">{aside}</span>}</h2>}
+      {title && (
+        <div className="card-head">
+          <div className="title">{icon && <span className={"tile" + (warm ? " warm" : "")}><Icon name={icon} /></span>}<h2>{title}</h2></div>
+          {aside && <div className="card-aside">{aside}</div>}
+        </div>
+      )}
       {children}
       {note && <div className="note">{note}</div>}
     </section>
@@ -21,9 +34,9 @@ export function Stat({ label, value, hint }: { label: string; value: ReactNode; 
   );
 }
 
-export function PageHead({ title, sub, children }: { title: string; sub?: ReactNode; children?: ReactNode }) {
+export function PageHead({ title, sub, children, className = "" }: { title: string; sub?: ReactNode; children?: ReactNode; className?: string }) {
   return (
-    <div className="topbar">
+    <div className={"topbar " + className}>
       <div><h1>{title}</h1>{sub && <div className="sub">{sub}</div>}</div>
       {children}
     </div>
@@ -63,13 +76,16 @@ export function TierBadge({ tier }: { tier: string }) {
   return <span className={"badge tier " + tier} title={`Risk tier ${tier}`}>{TIER_ICON[tier]} {tier}</span>;
 }
 
+const TALL_TABLE = 30;          // longer tables scroll inside their card, under a fixed header
+
 export type Column<T> = { key: string; label: string; right?: boolean; render?: (row: T) => ReactNode };
-export function Table<T extends Record<string, unknown>>({ rows, columns, onRow, selected, rowKey, max }: {
-  rows: T[]; columns: Column<T>[]; onRow?: (r: T) => void; selected?: string; rowKey?: string; max?: number;
+export function Table<T extends Record<string, unknown>>({ rows, columns, onRow, selected, rowKey, max, tall }: {
+  rows: T[]; columns: Column<T>[]; onRow?: (r: T) => void; selected?: string; rowKey?: string; max?: number; tall?: boolean;
 }) {
   const shown = max ? rows.slice(0, max) : rows;
+  const scrolls = tall || shown.length > TALL_TABLE;
   return (
-    <div className="tablewrap">
+    <div className={"tablewrap" + (scrolls ? " tall" : "")} tabIndex={scrolls ? 0 : undefined}>
       <table className="t">
         <thead><tr>{columns.map((c) => <th key={c.key} className={c.right ? "r" : ""}>{c.label}</th>)}</tr></thead>
         <tbody>
@@ -87,9 +103,9 @@ export function Table<T extends Record<string, unknown>>({ rows, columns, onRow,
   );
 }
 
-export function Seg<T extends string>({ value, options, onChange }: { value: T; options: { value: T; label: string }[]; onChange: (v: T) => void }) {
+export function Seg<T extends string>({ value, options, onChange, label }: { value: T; options: { value: T; label: string }[]; onChange: (v: T) => void; label?: string }) {
   return (
-    <div className="seg" role="group">
+    <div className="seg" role="group" aria-label={label}>
       {options.map((o) => <button key={o.value} className={o.value === value ? "on" : ""} aria-pressed={o.value === value} onClick={() => onChange(o.value)}>{o.label}</button>)}
     </div>
   );
@@ -125,11 +141,12 @@ export function WakeGate({ children }: { children: (health: Record<string, unkno
   if (health) return <>{children(health)}</>;
   return (
     <div className="wake">
-      <div className="box">
+      <Brand />
+      <div className="card box" role="status">
         <div className="spinner" aria-hidden />
         <h1>Waking the backend…</h1>
         <p className="ink2">The API runs on a free cloud instance that sleeps after 15 minutes without traffic. The first request starts it again, which usually takes under a minute.</p>
-        <p className="muted small num">{elapsed.toFixed(0)} s · attempt {attempts} · {API_BASE}</p>
+        <p className="muted small num" style={{ overflowWrap: "anywhere" }} aria-live="off">{elapsed.toFixed(0)} s · attempt {attempts} · {API_BASE}</p>
       </div>
     </div>
   );

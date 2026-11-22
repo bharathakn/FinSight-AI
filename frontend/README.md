@@ -26,9 +26,10 @@ make dashboard-build       # type-check + production build → frontend/dist
 Variables, then redeploy. The API must list the Vercel origin in `FINSIGHT_CORS_ORIGINS`.
 
 **Design notes:**
-- **Plotly** is a lazily loaded chunk (~1.4 MB gzipped). The first paint is about 60 KB, so the "waking the backend" screen appears immediately while a sleeping Render instance starts.
-- **Colours** come from the validated palette shared with the report figures (`src/theme.css`):
-  - Legitimate is blue, fraudulent orange, borderline aqua.
-  - Dark mode uses its own stepped values.
+- **Plotly** is a lazily loaded chunk (~1.4 MB gzipped). The first load is about 68 KB of code plus 182 KB of self-hosted fonts (swapped in when ready), so the "waking the backend" screen appears immediately while a sleeping Render instance starts.
+- **Theme (D-039):** warm paper, deep teal, Newsreader headings, Inter body. All values are tokens in `src/theme.css`; don't hardcode colours in pages.
+  - `--accent` is for the interface; `--mark` is for charts of one unlabelled series.
+  - Data meaning is fixed: legitimate blue (`--s1`), fraudulent orange (`--s2`), borderline aqua (`--s3`).
+  - Light is the default. Dark and System are in the sidebar (`src/theme.ts`); re-validate both when changing a colour.
   - Tier badges always carry an icon and text, never colour alone.
 - **`vercel.json`** rewrites every path to `index.html`, so client-side routes work, and adds immutable caching for hashed assets plus basic security headers.

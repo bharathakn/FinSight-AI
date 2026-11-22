@@ -415,13 +415,15 @@ Global SHAP bar + beeswarm (XGB), local waterfall per transaction (served via `/
 |---|---|
 | On-demand self-service | Deploys triggered by a Git push or the `render.yaml` Blueprint; no hardware or tickets |
 | Broad network access | Public HTTPS API; dashboard from Vercel's global edge CDN |
-| Resource pooling | Multi-tenant container hosts (Render, Cloud Run) and edge network (Vercel) |
-| Rapid elasticity | Scale-to-zero after idle, wake on request; horizontal scaling (`--scale`, Cloud Run autoscaling) |
+| Resource pooling | Multi-tenant container hosts (Render) and edge network (Vercel) |
+| Rapid elasticity | Scale-to-zero after idle, wake on request (cold start measured: 58 s); horizontal scaling (`--scale ml-service=3`) |
 | Measured service | Metered instance-hours / vCPU-seconds / requests; free-tier quotas |
 
-Service models: Render and Cloud Run = container PaaS (CaaS), Vercel = frontend PaaS + CDN (+ FaaS available), GitHub Actions = CI/CD as a service, GitHub Releases = artifact storage, the FinSight API = SaaS. Vercel and Render are managed layers on top of hyperscaler infrastructure.
+Service models: Render = container PaaS (CaaS; Cloud Run the documented alternative), Vercel = frontend PaaS + CDN (+ FaaS available), GitHub Actions = CI/CD as a service, GitHub Releases = artifact storage, the FinSight API = SaaS. Vercel and Render are managed layers on top of hyperscaler infrastructure.
 
 **Portability experiment: Render vs Google Cloud Run (D-028).** The same backend Docker image (inprocess mode) is also deployed to **Google Cloud Run** (region `asia-south1`, Mumbai; `min-instances=0`, `max-instances=2`) and pushed through **Artifact Registry**. Both are measured with the same script: cold-start time, warm p50/p95 latency, image size, memory, and cost within the free tiers. "One image, two clouds" demonstrates container portability and vendor-lock-in avoidance, and adds a hyperscaler to the project. Render + Vercel stay the primary (card-free) deployment; Cloud Run is the comparison target and needs a GCP billing account (SETUP §5.1c).
+
+> **Update 2026-11-22 (D-038):** the Cloud Run comparison was **not run**. The team chose not to attach a card to a GCP billing account. `deploy/cloudrun.sh` and `deploy/k8s/` remain the documented portability path; the report compares the cost and scaling models on paper, using the measured Render numbers.
 
 ### 8.1 Services (authoritative table)
 
@@ -474,6 +476,8 @@ All services are stateless and load artifacts at startup from `FINSIGHT_ARTIFACT
 | `/health`, `/metrics` | GET | service status, latency/request stats | CCT |
 
 Targets: p95 < 200 ms for `/score-transaction` when warm; cold start measured and reported separately.
+
+**Phase 10 results (live Render free instance, Singapore, measured from India; `reports/platform_render.json`):** warm `/score-transaction` client p50/p95 = 105/194 ms (server time 49/137 ms; the rest is the network round trip); RSS 349 MB of 512 MB; cold start after the 15-minute sleep = 58 s. Demo analysis of 10,000 rows ≈ 20–35 s on first run (small CPU share), 0.09 s when cached. Live: dashboard https://fin-sight-ai-bay.vercel.app · API https://finsight-api-r2mw.onrender.com.
 
 **Phase 8 results (Docker Compose, one laptop; `reports/platform_summary.json`, `figures/platform_01_phase8.png`):** warm single-client `/score-transaction` p50/p95 = 20/27 ms (remote, 5 containers) and 21/28 ms (inprocess, 1 container); process RSS: monolith 323 MB, ml-service 308 MB, other services 158–178 MB (Render free = 512 MB). Load test (30 users): 80 req/s with 1 ml replica (p50 160 ms) → 87 req/s with 3 (p50 100 ms), 0 errors; 10 users: p95 77 ms. Profiling cut in-process latency 138 → 21 ms p50 (D-034); the load test exposed sanctions screening as the CPU bottleneck (→ LRU cache) and replica pinning by pooled connections (→ short keep-alive) (D-035). Scoring input modes: stored transaction / what-if overrides / full feature row (D-033).
 
@@ -567,10 +571,14 @@ flowchart LR
 ### Phase 9 — Dashboard *(All)* ✅
 - [x] Pages: Overview · Data Quality · Transaction Explorer · Pattern Mining Lab · ML Lab · Clustering & Anomaly · Network Explorer · Risk Scorer · Platform (CCT metrics) — `frontend/`, React + Vite + TS, Plotly; light/dark; wake gate (D-036)
 
-### Phase 10 — Render + Vercel Deployment + Report *(CCT)*
-- [ ] `render.yaml` Blueprint (inprocess single service + full 5-service variant); `vercel.json`; GitHub Actions CI
-- [ ] Deploy backend on Render, frontend on Vercel; measure cold start, warm p95 latency, image sizes
-- [ ] Final report covering all three syllabi; demo rehearsal
+### Phase 9b — Live analysis *(All)* ✅
+- [x] Upload a CSV / analyse the demo dataset / attack simulator on the home page (D-037). Simulated attacks (3 seeds): 100% alerted plain; camouflaged 90–100%, shared device ~63%; 1.4% background false alerts (`reports/analyze_simulation.csv`)
+
+### Phase 10 — Render + Vercel Deployment + Report *(CCT)* ✅
+- [x] `render.yaml` Blueprint (inprocess single service + full 5-service variant); `vercel.json`; GitHub Actions CI
+- [x] Deploy backend on Render, frontend on Vercel; measure cold start, warm p95 latency, memory
+- [ ] ~~Cloud Run comparison~~ (not run, D-038)
+- [x] Final report covering all three syllabi
 
 ---
 

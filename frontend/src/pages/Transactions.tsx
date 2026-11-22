@@ -34,7 +34,7 @@ export default function TransactionsPage() {
   return (
     <>
       <PageHead title="Transaction explorer" sub="Browse the 10,000 transactions with their labels and scenarios. Select one to see its profile, then score it." />
-      <div className="filters">
+      <div className="filters panel">
         <label className="field">Label
           <select value={f.label} onChange={(e) => upd("label", e.target.value)}>
             <option value="">All</option><option>LEGITIMATE</option><option>FRAUDULENT</option><option>BORDERLINE</option>
@@ -73,11 +73,11 @@ export default function TransactionsPage() {
           )}</Async>
         </Card>
         <Card title="Profile">
-          {!sel && <p className="muted small">Select a transaction.</p>}
+          {!sel && <p className="empty">Select a transaction to see its profile.</p>}
           {sel && <Async state={detail}>{(t) => (
             <div className="stack">
               <div><div className="small muted">{String(t.transaction_id)}</div>
-                <div className="hero" style={{ fontSize: "2rem" }}>{fmt.inr(t.amount_inr as number)}</div>
+                <div className="hero" style={{ fontSize: "2.4rem" }}>{fmt.inr(t.amount_inr as number)}</div>
                 <div className="small ink2">{String(t.channel)} · {fmt.date(t.timestamp as string)} · {String(t.tx_city)}</div></div>
               <div><LabelBadge label={String(t.risk_label)} /> <span className="small muted">{String(t.scenario)}</span></div>
               <dl className="kv">
@@ -85,9 +85,9 @@ export default function TransactionsPage() {
                 <dt>To</dt><dd>{String(t.receiver_name)} <span className="muted">({String(t.receiver_account_id)})</span></dd>
                 {DETAIL.map(([k, l, f]) => <Fragment key={k}><dt>{l}</dt><dd>{(f as (v: never) => string)(t[k] as never)}</dd></Fragment>)}
               </dl>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <Link to={`/score?tx=${sel}`}><button className="primary">Score this transaction</button></Link>
-                <Link to={`/network?account=${String(t.receiver_account_id)}`}><button>Receiver's network</button></Link>
+              <div className="actions">
+                <Link className="btn primary" to={`/score?tx=${sel}`}>Score this transaction</Link>
+                <Link className="btn" to={`/network?account=${String(t.receiver_account_id)}`}>Receiver's network</Link>
               </div>
             </div>
           )}</Async>}

@@ -1,0 +1,40 @@
+{
+  "label": "render",
+  "url": "https://finsight-api-r2mw.onrender.com",
+  "measured_utc": "2026-11-21T23:59:03Z",
+  "cold_start": {
+    "seconds_to_healthy": 58.36,
+    "attempts": 1,
+    "health": {
+      "status": "ok",
+      "service": "api-gateway",
+      "version": "2026.11.21-6bc77a05cf",
+      "mode": "inprocess",
+      "host": "srv-dc1233gu01pc738h6tu0-hibernate-68dc7b4d94-cbfc7",
+      "uptime_s": 40.8,
+      "rss_mb": 343.8,
+      "backend": "inprocess",
+      "transactions": 10000,
+      "model_version": "2026.11.21-6bc77a05cf"
+    }
+  },
+  "warm": {
+    "n": 150,
+    "client_p50_ms": 105.01,
+    "client_p95_ms": 194.33,
+    "client_p99_ms": 197.12,
+    "client_mean_ms": 123.25,
+    "server_p50_ms": 48.8,
+    "server_p95_ms": 137.2,
+    "tiers": {
+      "LOW": 103,
+      "HIGH": 11,
+      "MEDIUM": 23,
+      "CRITICAL": 13
+    }
+  },
+  "mode": "inprocess",
+  "rss_mb": {
+    "gateway": 348.7
+  }
+}

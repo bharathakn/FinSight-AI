@@ -100,7 +100,18 @@ fcomp = pd.read_csv(REP / "final_model_comparison.csv").set_index("model")
 ftiers = pd.read_csv(REP / "final_risk_tiers.csv").set_index("risk_label")
 FT = fs7["test"]
 RSC = fs7["risk_scorer"]
-N_TESTS = 60
+N_TESTS = 69
+RND = J("platform_render.json")
+SIMB = pd.read_csv(REP / "analyze_simulation.csv")
+SIMG = SIMB.groupby(["attack", "camouflage"]).agg(alerted=("alerted", "mean"), lo=("alerted", "min"), hi=("alerted", "max"))
+SIM_FA = SIMB["background_false_alert"].mean()
+ATT = {"fraud_ring": "Fraud ring (fan-in to a hub)", "mule_chain": "Mule chain (pass-through, layering)", "burst": "Burst (one sender, many payees in 10 min)",
+       "structuring": "Structuring (just under ₹50,000)", "shared_device": "Shared device (one phone, many accounts)"}
+def sim_cell(a, c):
+    g = SIMG.loc[(a, c)]
+    return f"{g['alerted']:.0%}" if g["lo"] == g["hi"] else f"{g['alerted']:.0%} ({g['lo']:.0%}–{g['hi']:.0%})"
+RW, RC = RND["warm"], RND["cold_start"]
+LIVE_UI, LIVE_API = "https://fin-sight-ai-bay.vercel.app", "https://finsight-api-r2mw.onrender.com"
 plat = J("platform_summary.json")
 PW = {k: v["warm"] for k, v in plat["warm"].items()}
 PL = plat["load"]
@@ -336,9 +347,9 @@ add(f"""
   <div class="cover-grid">
     <div><b>Document</b><span>Complete project report: planning, design, implementation, results, status and hand-off guide</span></div>
     <div><b>Version / date</b><span>Report v1.0 · {TODAY}</span></div>
-    <div><b>Status</b><span>Phases 0–9 complete (data, mining, supervised ML, unsupervised + anomaly detection, tuning + risk score + explanations, microservices + Docker, React dashboard). Phase 10 (cloud deployment on Render + Vercel and the final measurements) is designed and ready to run.</span></div>
+    <div><b>Status</b><span>All 10 phases complete: data, mining, supervised ML, unsupervised + anomaly detection, tuning + risk score + explanations, microservices + Docker, React dashboard with live analysis, and cloud deployment on Vercel + Render with measurements.</span></div>
     <div><b>Headline result</b><span>Production model (tuned, calibrated XGBoost): test PR-AUC {FT['test_pr_auc']:.3f}, ROC-AUC {FT['test_roc_auc']:.3f}, F1 {FT['test_f1']:.3f} (precision {pct(FT['test_precision'],0)}, recall {pct(FT['test_recall'],0)}). Network features add a significant gain only where real network structure exists.</span></div>
-    <div><b>Deployment target</b><span>React dashboard on Vercel · FastAPI microservices in Docker on Render</span></div>
+    <div><b>Live system</b><span>Dashboard {LIVE_UI} · API {LIVE_API}/docs (React on Vercel's CDN · FastAPI in Docker on Render)</span></div>
     <div><b>Repository</b><span>github.com/bharathakn/FinSight-AI</span></div>
   </div>
   <div class="note">All India data is synthetic. Results describe the data generator and our documented modifications, not real-world fraud.</div>
@@ -350,7 +361,7 @@ add(f"""
 {table([
  ["Data Mining &amp; Wrangling (DMW)", "1–10, 11 (baselines: rules vs ML), 12 (cluster analysis, PaySim scale), 15 (dashboard: data and pattern pages), 17 (DMW table), 18, 19.1", "KDD pipeline, wrangling, data quality and leakage audit, v1.1 dataset engineering, discretisation, Apriori vs FP-Growth, rule evaluation"],
  ["Machine Learning (ML)", "1–3, 5, 7–9, 11, 12, 13, 14 (model serving), 15 (risk scorer, ML lab), 17 (ML table), 18, 19.2", "Feature engineering, experimental protocol, 6 classifiers × 3 feature sets × 2 datasets, significance testing, imbalance, per-scenario analysis; clustering, anomaly detection, autoencoder → ONNX; tuning, bias–variance, stacking, calibration, risk score, SHAP"],
- ["Cloud Computing &amp; Technology (CCT)", "1–4, 12–13 (serving artifacts), 14, 15, 16, 17 (CCT table), 18, 19.3", "Microservices (built + measured), REST API, Docker, Compose scaling, load testing, observability, security; Vercel + Render deployment design, free-tier constraints, CI/CD, IaC, scale-to-zero"],
+ ["Cloud Computing &amp; Technology (CCT)", "1–4, 12–13 (serving artifacts), 14, 15, 16, 17 (CCT table), 18, 19.3", "Microservices (built + measured), REST API, Docker, Compose scaling, load testing, observability, security; live Vercel + Render deployment, free-tier constraints, CI/CD, IaC, scale-to-zero and cold start (measured)"],
 ], ["If you are writing for…", "Read chapters", "Core material"], raw=True, widths=["25%", "30%", "45%"])}
 <p>Chapter 19 contains ready-made <b>report outlines and slide-by-slide deck outlines</b> for each subject, with the figure to use on each slide. The figures are also available as PNG files in <code>reports/figures/</code> of the repository.</p>
 
@@ -359,7 +370,7 @@ add(f"""
 <li>Executive summary</li><li>Introduction, objectives and research questions</li><li>Datasets</li>
 <li>Planning, methodology and project management</li><li>Phase 0: dataset audit</li><li>Phase 1: data wrangling and data quality</li>
 <li>Phase 1b: dataset v1.1 (graph-structure injection)</li><li>Phase 3: graph (network) features</li><li>Phase 2: exploratory data analysis</li>
-<li>Phase 4: association rule mining</li><li>Phase 5: supervised classification</li><li>Phase 6: unsupervised learning and anomaly detection</li><li>Phase 7: tuning, ensembles, calibration, risk score and explanations</li><li>Phase 8: cloud services and containers</li><li>Phase 9: the web dashboard</li><li>Planned work: phase 10 (deployment)</li>
+<li>Phase 4: association rule mining</li><li>Phase 5: supervised classification</li><li>Phase 6: unsupervised learning and anomaly detection</li><li>Phase 7: tuning, ensembles, calibration, risk score and explanations</li><li>Phase 8: cloud services and containers</li><li>Phase 9: the web dashboard and live analysis</li><li>Phase 10: cloud deployment and measurements</li>
 <li>Syllabus mapping</li><li>Conclusions, limitations and future work</li><li>Guide for report and presentation writers</li>
 <li>Appendices: decision log · feature dictionary · glossary · reproducibility · references</li>
 </ol>
@@ -370,8 +381,8 @@ add(f"""
 add(f"""
 <section>
 <h1>Executive summary</h1>
-<p><b>FinSight AI</b> is a financial-transaction intelligence platform built as one project for three courses. It takes a synthetic Indian payment ecosystem (10,000 UPI/NEFT/RTGS transactions, 1,200 customers, 1,500 accounts) plus four public datasets (IEEE-CIS fraud, PaySim mobile money, OFAC and UN sanctions lists). It runs the full <b>KDD process</b> (data mining), builds and rigorously compares <b>machine-learning models</b>, and is being packaged as <b>cloud microservices</b> with a web dashboard.</p>
-<h3>What has been done (phases 0–9 of 10)</h3>
+<p><b>FinSight AI</b> is a financial-transaction intelligence platform built as one project for three courses. It takes a synthetic Indian payment ecosystem (10,000 UPI/NEFT/RTGS transactions, 1,200 customers, 1,500 accounts) plus four public datasets (IEEE-CIS fraud, PaySim mobile money, OFAC and UN sanctions lists). It runs the full <b>KDD process</b> (data mining), builds and rigorously compares <b>machine-learning models</b>, and is deployed as <b>cloud microservices</b> with a public web dashboard.</p>
+<h3>What was done (all 10 phases)</h3>
 <ul>
 <li><b>Audit before building.</b> The original plan was checked against the data. The audit found label-leaking columns (<code>rapid_forward_delta_sec</code>, <code>is_flagged_alert</code>, <code>alert_id</code>), a join that matched only 8 of 10,000 rows, redundant and constant columns, and, most importantly, that the dataset's "network" fraud scenarios (rings, mules, layering) <b>had no network structure at all</b>: every graph feature scored AUC ≈ 0.50.</li>
 <li><b>Dataset engineering (v1.1).</b> A seeded, logged, tested injection step wired those scenarios into real graph structure. It added legitimate look-alike patterns (merchant hubs, family devices) so the signal isn't a giveaway, and camouflaged 50% of organised fraud so it looks normal per transaction. Labels were never changed; v1.0 is kept as a control.</li>
@@ -381,7 +392,9 @@ add(f"""
 <li><b>Unsupervised learning and anomaly detection.</b> Without labels, K-Means (K = {ucs['C']['k']}) separates normal traffic (3% fraud) from three interpretable risk clusters (velocity bursts, fan-in hubs, unusual-amount community flows; ARI {ucs['C']['kmeans_vs_label']['ari']:.2f}). Detectors trained only on legitimate rows reach <b>PR-AUC ≈ {uan['best_detector_expC']['pr_auc']:.2f}</b> (One-class SVM ≈ autoencoder) vs {best['test_pr_auc']:.3f} supervised. They flag ~80% of BORDERLINE rows (<i>anomalous ≠ fraudulent</i>) and recover {uan['complementarity']['caught_by']['autoencoder']} of the {uan['complementarity']['xgb_missed']} frauds XGBoost misses. The autoencoder ships as a {upar['onnx_bytes'] // 1024} KB ONNX file; an Isolation Forest scores {ups['rows_scored']/1e6:.2f} M PaySim rows at ~{ups['feature_sets']['raw']['rows_per_second']//1000*1000:,} rows/s.</li>
 <li><b>Tuning, ensembles and the risk score.</b> Grid and randomized search with cross-validation improved every model (decision tree +0.058 PR-AUC). A stacking ensemble did not beat tuned XGBoost, so the <b>production model is a tuned, isotonic-calibrated XGBoost: test PR-AUC {FT['test_pr_auc']:.3f}, F1 {FT['test_f1']:.3f}</b> (Phase 5 default: {best['test_f1']:.3f}), in a {fs7['artifact_sizes_mb']['production_model.joblib']} MB file. A 0–100 risk score combines it with the anomaly percentile and a network-flag score; validation-chosen tiers put {pct(ftiers.loc['FRAUDULENT','CRITICAL_share'],0)} of fraud in CRITICAL and {pct(ftiers.loc['LEGITIMATE','LOW_share'],0)} of legitimate payments in LOW. Every score is explained with SHAP values computed natively by XGBoost.</li>
 <li><b>Cloud services.</b> The models run behind a FastAPI <b>API gateway and four microservices</b> (ML, mining, graph, sanctions) in Docker, or as one container for the free cloud tier. The same code runs in both modes and returns identical scores. A warm score takes <b>{PW['compose-remote']['client_p95_ms']:.0f} ms (p95)</b>; the single container uses {plat['warm']['compose-inprocess']['rss_mb']['gateway']:.0f} MB of memory, within Render's 512 MB free instance. A load test served {PL['remote_ml3']['rps_total']:.0f} requests/s with no errors, and scaling the ML service to three replicas cut median latency from {PL['remote_ml1']['p50_ms']:.0f} to {PL['remote_ml3']['p50_ms']:.0f} ms.</li>
-<li><b>Web dashboard.</b> A React single-page app with nine pages (overview, data quality, transaction explorer, pattern-mining lab, ML lab, clustering and anomaly, network explorer, a what-if risk scorer and a platform page) presents every result live from the API, in light and dark themes, and is ready to deploy on Vercel's CDN.</li>
+<li><b>Web dashboard.</b> A React single-page app with, besides the live-analysis home page, nine pages (overview, data quality, transaction explorer, pattern-mining lab, ML lab, clustering and anomaly, network explorer, a what-if risk scorer and a platform page) presents every result live from the API, in one warm paper-and-teal theme, with an optional dark version.</li>
+<li><b>Live analysis.</b> The dashboard's home page runs the whole system on new data: upload a CSV of payments, analyse the built-in demo dataset, or inject simulated attacks (fraud ring, mule chain, burst, structuring, shared device, optionally camouflaged) into a normal day. Analysing the demo dataset reproduces every training feature exactly. Simulated attacks are alerted 100% of the time plain and 80–100% camouflaged, with about 2% false alerts on normal payments.</li>
+<li><b>Cloud deployment.</b> The dashboard is live on <b>Vercel's CDN</b> and the API runs as a Docker container on <b>Render</b> (Singapore), both deployed from GitHub by Infrastructure-as-Code files and redeployed on every push, with CI testing each push. Measured from India: warm scoring <b>p50 {RW['client_p50_ms']:.0f} ms, p95 {RW['client_p95_ms']:.0f} ms</b> (server time p50 {RW['server_p50_ms']:.0f} ms), {RND['rss_mb']['gateway']:.0f} MB of the 512 MB free instance, and a <b>{RC['seconds_to_healthy']:.0f} s cold start</b> after the free instance sleeps.</li>
 </ul>
 <h3>Key results at a glance</h3>
 {table([
@@ -396,8 +409,8 @@ add(f"""
  ["Rules vs ML (same test set)", f"association rules F1 {rb['test']['f1']:.3f} / PR-AUC {rb['test']['pr_auc']:.3f} vs production model F1 {FT['test_f1']:.3f} / PR-AUC {FT['test_pr_auc']:.3f}"],
  ["Risk score + tiers", f"weights model {RSC['weights']['model']:.2f} / anomaly {RSC['weights']['anomaly']:.2f} / graph {RSC['weights']['graph']:.2f}; PR-AUC {fs7['risk_score_test']['final']['pr_auc']:.3f}; fraud ≥ HIGH {pct(ftiers.loc['FRAUDULENT','HIGH_share']+ftiers.loc['FRAUDULENT','CRITICAL_share'],0)}, legitimate in LOW {pct(ftiers.loc['LEGITIMATE','LOW_share'],0)}"],
 ], ["Question", "Finding"], widths=["28%", "72%"])}
-<h3>What remains (designed, not yet built)</h3>
-<p>Phase 10: deployment on <b>Vercel (dashboard) and Render (API)</b>, the Render vs Google Cloud Run comparison, cold-start measurements and the final report. RQ8 is completed there.</p>
+<h3>Try it</h3>
+<p>Dashboard: <b>{LIVE_UI}</b> (open it a minute before a demo: the free API sleeps after 15 idle minutes). API documentation: {LIVE_API}/docs. Source: github.com/bharathakn/FinSight-AI.</p>
 </section>
 """)
 
@@ -428,7 +441,7 @@ add(f"""
  ["RQ5", "Can unsupervised clustering recover risk groupings without labels?", "ML", "Answered (Ch. 12)"],
  ["RQ6", "How well do Isolation Forest, One-class SVM and an autoencoder trained only on legitimate data detect fraud?", "ML", "Answered (Ch. 12)"],
  ["RQ7", "Which scenarios (and BORDERLINE cases) are hardest for the models?", "ML + DMW", "Answered (Ch. 11)"],
- ["RQ8", "How does a containerised microservice architecture on managed cloud platforms support independent deployment, scaling and cost (scale-to-zero vs cold start)?", "CCT", "Partly answered locally (Ch. 14); cloud measurements in Phase 10"],
+ ["RQ8", "How does a containerised microservice architecture on managed cloud platforms support independent deployment, scaling and cost (scale-to-zero vs cold start)?", "CCT", "Answered: Ch. 14 (local) and Ch. 16 (cloud)"],
 ], ["ID", "Question", "Subject", "Status"], widths=["7%", "60%", "11%", "22%"])}
 <h2>Scope and non-goals</h2>
 <p>In scope: offline analytics and model building on the provided datasets, a scoring API and a dashboard. Out of scope: real customer data, real-time streaming infrastructure (Kafka), graph databases (Neo4j), and Kubernetes clusters (only conceptual manifests). These were deliberately excluded to keep the project deliverable.</p>
@@ -503,8 +516,9 @@ add(f"""
  ["6", "Unsupervised + anomaly", "ML", "✔ done", "K-Means, DBSCAN, PCA/t-SNE; IF, OC-SVM, autoencoder (PyTorch → ONNX); PaySim IF"],
  ["7", "Tuning + stacking + SHAP", "ML", "✔ done", "Grid/Random search, learning curves, stacking, isotonic calibration, risk score + tiers, SHAP"],
  ["8", "Services + Docker", "CCT", "✔ done", "5 FastAPI services, one multi-stage Dockerfile, Compose, two service modes, load test"],
- ["9", "Dashboard", "All", "✔ done", "React + Vite SPA, 9 pages, light/dark, wake-up screen"],
- ["10", "Deployment + report", "CCT", "planned", "Render (backend) + Vercel (frontend), measurements"],
+ ["9", "Dashboard", "All", "✔ done", "React + Vite SPA, 10 pages incl. live analysis, light/dark, wake-up screen"],
+ ["9b", "Live analysis", "All", "✔ done", "Upload a CSV, analyse the demo dataset or simulate attacks; scored and explained live"],
+ ["10", "Deployment + report", "CCT", "✔ done", "Live on Vercel (frontend) + Render (API); CI; latency, memory and cold start measured"],
 ], ["Phase", "Name", "Subject", "Status", "Outcome / scope"], "small", widths=["7%", "26%", "10%", "13%", "44%"])}
 <h2>Plan review: from v1 to v2</h2>
 <p>Before any code was written, the original plan was audited against the actual data. Sixteen issues were found and fixed. The most consequential ones:</p>
@@ -531,7 +545,7 @@ add(f"""
  ["Mining", "MLxtend (Apriori, FP-Growth, FP-Max)"], ["Machine learning", "scikit-learn, XGBoost, imbalanced-learn; PyTorch autoencoder → ONNX → onnxruntime; SHAP"],
  ["Graph", "NetworkX (PageRank, Louvain communities)"], ["Sanctions", "RapidFuzz fuzzy matching, lxml"],
  ["Visualisation", "Matplotlib (report figures); Plotly.js (dashboard)"], ["API / services", "FastAPI, Pydantic, Uvicorn, httpx; Docker, Docker Compose; Locust (load testing)"],
- ["Frontend", "React 18 + Vite + TypeScript, Plotly.js; static build for Vercel"], ["Cloud (planned)", "Render (Blueprint IaC), Vercel, Google Cloud Run (comparison), GitHub Actions, GitHub Releases"],
+ ["Frontend", "React 18 + Vite + TypeScript, Plotly.js; static build for Vercel"], ["Cloud", "Render (Docker, Blueprint IaC), Vercel (static CDN), GitHub Actions (CI), GitHub Releases (model registry); Cloud Run / Kubernetes scripts as the documented portability path"],
 ], ["Layer", "Technology"], widths=["30%", "70%"])}
 </section>
 """)
@@ -846,7 +860,7 @@ add(f"""
 add(f"""
 <section>
 <h1>Phase 8: cloud services and containers</h1>
-<p>Phase 8 turns the trained models into a <b>running service</b>: a public REST API backed by four domain microservices, packaged as Docker containers, measured for latency, memory and load. The cloud deployment itself (Render + Vercel, and the Cloud Run comparison) is Phase 10; everything here runs locally with Docker Compose and is ready to deploy.</p>
+<p>Phase 8 turns the trained models into a <b>running service</b>: a public REST API backed by four domain microservices, packaged as Docker containers, measured for latency, memory and load. The cloud deployment itself (Render + Vercel) is Phase 10 (Ch. 16); everything in this chapter runs locally with Docker Compose.</p>
 <h2>Architecture</h2>
 {flow([("Client / React SPA", "HTTPS + CORS"), ("api-gateway :8000", "public · validation · orchestration · risk score · CORS · /metrics"), [("ml-service :8001", "calibrated XGBoost · TreeSHAP reasons · ONNX autoencoder · K-Means"), ("mining-service :8002", "association rules · live rule matching")], [("graph-service :8003", "account metrics · ego networks · graph risk"), ("sanctions-service :8004", "fuzzy OFAC + UN screening")]])}
 <p>The gateway is the only public service. For each score it calls the four domain services <b>in parallel</b>, so latency is the slowest call, not the sum. All services are <b>stateless</b>: they load a versioned artifact bundle at start-up and keep no per-request state, so any replica can serve any request.</p>
@@ -902,7 +916,7 @@ add(f"""
 # 15 phase 9
 add(f"""
 <section>
-<h1>Phase 9: the web dashboard</h1>
+<h1>Phase 9: the web dashboard and live analysis</h1>
 <p>The dashboard is how examiners and users see the project. It is a <b>React single-page application</b> (React 18, Vite, TypeScript, Plotly.js) that holds no data of its own: every number on every page comes live from the API gateway built in Phase 8. It builds to static files, so it can be served from Vercel's global CDN with no server.</p>
 {table([
  ["Executive overview", "KPIs, daily volume (fraud vs not), fraud rate by channel, scenarios, how a score is built, key findings", "All"],
@@ -918,64 +932,132 @@ add(f"""
 {fig("dashboard_08_risk_scorer", "Risk scorer: a mule pass-through fraud scores 100 (CRITICAL). The reasons are native TreeSHAP values; the components, network red flags, fired rules, cluster, sanctions result and per-service timings come from the four services.", "66%")}
 {fig("dashboard_01_overview", "Executive overview.", "66%")}
 {fig("dashboard_05_ml_lab", "ML experiments lab: feature-group ablation, test heatmap, tuning gains and final candidates (switchable between dataset v1.1 and the v1.0 control).", "66%")}
-{fig("dashboard_04_patterns", "Pattern mining lab: every productive rule, the Apriori vs FP-Growth benchmark, and a filterable rule table with network items outlined.", "66%")}
+{fig("dashboard_04_patterns", "Pattern mining lab: every productive rule, the Apriori vs FP-Growth benchmark, and a filterable rule table with network items highlighted in amber.", "66%")}
 {fig("dashboard_06_clusters", "Clustering and anomaly: PCA scatter (click a point to score it), K-Means cluster profiles, K selection curves and the detector comparison.", "66%")}
 {fig("dashboard_07_network", "Network explorer: a fan-in hub receiving fraudulent payments (orange edges) from many senders.", "66%")}
 {fig("dashboard_09_platform", "Platform page: live service status and latency, plus the recorded Phase 8 measurements.", "66%")}
 {fig("dashboard_02_data_quality", "Data quality page: audit tables, leakage scan (the alert flag is marked SUSPECT), feature ranking and the sanctions threshold curve.", "66%")}
 {fig("dashboard_03_transactions", "Transaction explorer with filters and paging.", "66%")}
-<h2>Design decisions (D-036)</h2>
+<h2>Design decisions (D-036, D-039)</h2>
 <ul>
-<li><b>Cold starts handled in the interface.</b> Before rendering, the app polls <code>/health</code> and shows "Waking the backend…" with a timer, because Render's free tier sleeps after 15 minutes. The first page load is only about 60 KB (gzipped); the 1.4 MB charting library loads with the first chart, so the waiting screen appears instantly. The Platform page reports how long this visit's wake-up took.</li>
-<li><b>One colour language.</b> The same validated, colour-blind-safe palette as the report figures: legitimate blue, fraudulent orange, borderline aqua, everywhere. Dark mode uses its own stepped colours (not an automatic inversion). Risk tiers always show an icon and a word, never colour alone. Where a page already uses hues for labels and clusters, other series switch to neutral inks so no colour means two things.</li>
+<li><b>Cold starts handled in the interface.</b> Before rendering, the app polls <code>/health</code> and shows "Waking the backend…" with a timer, because Render's free tier sleeps after 15 minutes. That screen needs about 68 KB of compressed code and 182 KB of self-hosted fonts (text shows in a system font until they arrive); the 1.4 MB charting library loads with the first chart. The Platform page reports how long this visit's wake-up took.</li>
+<li><b>One design system (D-039).</b> Warm paper surfaces, a deep-teal interface colour, serif headings (Newsreader) with a sans body (Inter), soft cards and pills, on every page and state. Data keeps the meaning used in the report figures (legitimate blue, fraudulent orange, borderline aqua), with shades re-validated on the new surfaces for colour-blind readers; charts of a single unlabelled series use teal. Light is the default; dark has its own stepped colours. Risk tiers always show an icon and a word, never colour alone.</li>
 <li><b>Interactive, not decorative.</b> Every chart has hover tooltips, the PCA scatter opens the scorer for the clicked transaction, the network graph re-centres on the clicked account, and tables are keyboard-navigable.</li>
 <li><b>Static hosting.</b> <code>vercel.json</code> rewrites every route to <code>index.html</code> (client-side routing), caches hashed assets for a year, and adds security headers. The API address is a build-time environment variable (<code>VITE_API_BASE_URL</code>), and the API only accepts browser calls from origins on its CORS allow-list.</li>
-<li><b>Checked like the report figures.</b> Every page was rendered in a headless browser (light, dark and a 390 px phone width) and inspected; overlapping labels, colour clashes and a crowded network layout were fixed before sign-off.</li>
+<li><b>Checked like the report figures.</b> Every page was rendered in a headless browser in light and dark and from 320 to 1920 px wide, with automated checks for horizontal overflow, text contrast (4.5:1 for normal text) and console errors, followed by inspection of the screenshots.</li>
 </ul>
 <p>Four API endpoints were added for the dashboard (<code>/clusters</code>, <code>/accounts</code>, <code>/data-quality</code>, <code>/platform/benchmarks</code>), with tests in both service modes. The bundle now includes a 2-D PCA embedding for the scatter plot, and large responses are gzip-compressed.</p>
+<h2>Phase 9b: live analysis (the home page)</h2>
+<p>A results dashboard only shows what already happened. To let examiners see the system <b>work</b>, the home page runs the complete pipeline on new data in about the time it takes to explain it. There are three inputs:</p>
+{table([
+ ["Demo dataset", "The 10,000 synthetic payments (or a 2,000-row stratified sample) with their labels", "Shows the end-to-end pipeline and how accurate it is, including on the held-out test rows only"],
+ ["Upload a CSV", "Any file in the FinSight transaction format: 6 required columns, optional ones defaulted; template and sample files are downloadable; up to 25,000 rows / 10 MB, processed in memory and never stored", "Real use: a bank analyst's batch of payments"],
+ ["Attack simulator", "A normal day of legitimate payments (31 Aug) with chosen attacks injected and labelled, optionally camouflaged to look normal per payment", "Shows that the system catches organised patterns it has never seen as rows"],
+], ["Input", "What it is", "What it demonstrates"], "small", widths=["16%", "52%", "32%"])}
+{flow([("1 · Validate", "required columns, types, dates, duplicates, amounts; bad rows reported"), ("2 · Defaults", "optional fields from the bank's records; unknown accounts imputed and reported"), ("3 · Features", "bank history + batch through the unchanged Phase 1/3 code (point-in-time windows, PageRank)"), ("4 · Score", "risk score 0–100 via the same backend as the API: model, anomaly, network flags, rules, sanctions"), ("5 · Summarise", "tiers, alerts, suspicious structures, rules, anomalies, accuracy if labels exist, CSV export")], "small")}
+<ul>
+<li><b>Same code, same features.</b> A batch is analysed together with the bank's 10,000-row history, so velocity windows and PageRank see the same context as in training. Analysing the demo dataset reproduces every stored training feature exactly (maximum difference 0.0, tested). Held-out PR-AUC is 0.892 without the sanctions override and 0.881 with it: two synthetic customer names fuzzy-match sanctions entries, which is reported rather than hidden.</li>
+<li><b>Labels never influence a score.</b> If the file has <code>is_fraud</code> / <code>risk_label</code> / <code>scenario</code>, they are only compared with the results afterwards (PR-AUC, precision, recall, F1, recall per scenario).</li>
+<li><b>Suspicious structures.</b> Besides single payments, the page groups alerts into fan-in hubs, pass-through chains, bursts and shared devices, and draws them as small network diagrams.</li>
+<li><b>Fits the free cloud instance.</b> 10,000 rows take ~3 s on a laptop and ~20–35 s on Render's shared CPU; peak memory 436 MB at 24,000 rows. At most two results are kept for 30 minutes, memory is released after each run, and the demo results are cached (a repeat run returns in 0.09 s).</li>
+</ul>
+{table([[ATT[a], sim_cell(a, False), sim_cell(a, True)] for a in ATT],
+       ["Simulated attack (10 injected payments, 800 normal ones; 3 seeds)", "Alerted (HIGH / CRITICAL)", "Alerted when camouflaged"], "small", widths=["52%", "24%", "24%"])}
+<p>Normal background payments are falsely alerted {SIM_FA:.1%} of the time. Camouflaged shared devices are the hardest case: every other signal looks normal, so only the device sharing gives them away.</p>
+{fig("dashboard_10_analyze", "Live analysis of the 2,000-row demo sample (screenshot from a local run of the same code): data-quality checks, KPIs, risk tiers, alerts over time and the accuracy check, overall and on held-out test rows only.", "62%")}
+{fig("dashboard_11_simulation", "Attack simulator: a fraud ring, a mule chain and a burst injected into a normal day. 35 of the 36 injected payments raised an alert (one burst payment was missed), and the suspicious structures (fan-in hub, pass-through chains, burst, shared devices) are found and drawn.", "62%")}
 </section>
 """)
 
-# 16 planned
+# 16 phase 10
 add(f"""
 <section>
-<h1>Planned work: phase 10 (deployment)</h1>
-<p class="callout">Phase 10 needs the team's GitHub, Render and Vercel accounts (and optionally a Google Cloud billing account for the comparison). Everything it deploys already exists and runs locally; the measurements below will be added when it is done.</p>
-<h2>Phase 10: deployment on Vercel + Render</h2>
+<h1>Phase 10: cloud deployment and measurements</h1>
+<p>The system is live: the React dashboard on <b>Vercel</b> at <b>{LIVE_UI}</b> and the FastAPI backend as a Docker container on <b>Render</b> at <b>{LIVE_API}</b> (interactive API documentation at <code>/docs</code>). Both are deployed from the GitHub repository by Infrastructure-as-Code files and redeploy automatically on every push to <code>main</code>.</p>
+<h2>Deployment topology</h2>
+{flow([("Developer", "git push to main"), [("GitHub", "code · Actions CI · Releases (model bundle, sha256)")], [("Render build", "docker build (same Dockerfile as local); downloads the model bundle"), ("Vercel build", "npm run build; API address baked in")], [("Render container", "FastAPI gateway, inprocess mode · Singapore · 512 MB · HTTPS"), ("Vercel CDN", "static SPA at the edge · HTTPS")], ("Browser", "loads the SPA from Vercel; calls the API on Render directly (CORS allow-list)")], "small")}
 {table([
- ["React dashboard (static)", "Vercel (Hobby, free)", "Global CDN, Git-push deploys, preview URL per pull request. Streamlit can't run on Vercel, hence React."],
- ["FastAPI services (Docker)", "Render web services (free)", "Native Docker builds from GitHub, managed HTTPS, Blueprint IaC (render.yaml)"],
- ["Model artifacts (4.4 MB bundle)", "GitHub Releases", "Versioned 'model registry' (built in Phase 8); downloaded during docker build into an immutable image"],
- ["Training pipeline", "Local / Compose", "Needs the 1.8 GB dataset (not in Git); publishes artifacts to a release"],
- ["CI", "GitHub Actions", "Tests on every push; Render and Vercel auto-deploy from main"],
- ["Comparison target (same image)", "Google Cloud Run + Artifact Registry (asia-south1)", "Portability experiment: one Docker image, two clouds, measured with the same script (D-028)"],
-], ["Component", "Platform", "Reason"], "small", widths=["24%", "24%", "52%"])}
+ ["React dashboard (static)", "Vercel (Hobby, free)", "Global CDN, Git-push deploys, preview URL per pull request; SPA rewrites and security headers in vercel.json"],
+ ["FastAPI services (Docker)", "Render web service (free)", "Native Docker builds from GitHub, managed HTTPS, health checks, Blueprint IaC (render.yaml)"],
+ ["Model artifacts (7.9 MB bundle)", "GitHub Releases", "Versioned, checksummed 'model registry'; downloaded during docker build into an immutable image"],
+ ["Training pipeline", "Local", "Needs the 1.8 GB dataset (not in Git); publishes artifacts to a new release"],
+ ["CI", "GitHub Actions", "Every push: tests, dashboard build, image build + smoke test at 512 MB"],
+ ["Portability path (documented)", "Google Cloud Run · Kubernetes", "deploy/cloudrun.sh and deploy/k8s/finsight.yaml run the same image; not deployed (D-038)"],
+], ["Component", "Platform", "Role"], "small", widths=["24%", "24%", "52%"])}
+<h2>Infrastructure as Code and CI/CD</h2>
+<ul>
+<li><b>render.yaml (Blueprint):</b> one free web service in Singapore (closest Render region to India) built from <code>docker/Dockerfile</code>, with health check <code>/health</code>, <code>autoDeploy</code> on push, build arguments (which service, which dependency set, the model release URL) and runtime settings. <code>deploy/render-full.yaml</code> is the five-service microservices variant.</li>
+<li><b>vercel.json:</b> client-side routing, one-year caching of hashed assets, security headers.</li>
+<li><b>GitHub Actions (.github/workflows/ci.yml), three jobs:</b> (1) the Python test suite ({N_TESTS} tests; those that need the private dataset skip on the clean runner); (2) type-check and production build of the dashboard; (3) build the exact image Render builds and smoke-test it under a 512 MB memory limit (health check, then one score that must be CRITICAL). Every run on <code>main</code> passed.</li>
+<li><b>GitOps:</b> nothing is deployed by hand. A push to <code>main</code> triggers CI, the Render build and the Vercel build. A new model is published as a GitHub Release, and the next build picks it up without any configuration change.</li>
+</ul>
+<h2>Configuration and secrets (12-factor)</h2>
+{table([
+ ["FINSIGHT_SERVICE_MODE", "Render (runtime)", "inprocess: one container; remote: five services"],
+ ["FINSIGHT_CORS_ORIGINS", "Render (runtime)", "the browser origins allowed to call the API: the Vercel domain and localhost:5173"],
+ ["FINSIGHT_INTERNAL_KEY", "Render (generated secret)", "shared key between services in remote mode; never in Git"],
+ ["SERVICE, REQS, ARTIFACTS_URL", "Render (build arguments)", "which service to run, which dependencies, which model release"],
+ ["VITE_API_BASE_URL", "Vercel (build time)", "the API address compiled into the static dashboard"],
+], ["Variable", "Set in", "Purpose"], "small", widths=["32%", "24%", "44%"])}
+<h2>Measurements on the live deployment</h2>
+<p>Measured from a laptop in India with the same script as the local runs (<code>deploy/measure.py</code>, {RW['n']} scoring calls on random stored transactions). "Server" is the time spent inside the API (the <code>Server-Timing</code> header); the difference from "client" is the network round trip to Singapore.</p>
+{table([
+ ["Warm /score-transaction, client p50 / p95", f"{PW['compose-inprocess']['client_p50_ms']:.0f} / {PW['compose-inprocess']['client_p95_ms']:.0f} ms", f"{RW['client_p50_ms']:.0f} / {RW['client_p95_ms']:.0f} ms (target &lt; 200 ms)"],
+ ["Warm, server time p50 / p95", f"{PW['compose-inprocess']['server_p50_ms']:.0f} / {PW['compose-inprocess']['server_p95_ms']:.0f} ms", f"{RW['server_p50_ms']:.0f} / {RW['server_p95_ms']:.0f} ms"],
+ ["Memory (process RSS)", f"{plat['warm']['compose-inprocess']['rss_mb']['gateway']:.0f} MB", f"{RND['rss_mb']['gateway']:.0f} MB of 512 MB"],
+ ["Start-up", f"{plat['startup_s']['inprocess_container']:.0f} s (container to healthy)", f"cold start {RC['seconds_to_healthy']:.0f} s after sleeping (≈ {RC['health']['uptime_s']:.0f} s loading the app, the rest waking the instance)"],
+ ["Demo analysis, 10,000 rows", "~3 s", "~20–35 s on first run; 0.09 s when cached"],
+], ["Metric", "Local container (8-core laptop)", "Render free instance (Singapore)"], "small", widths=["30%", "30%", "40%"], raw=True)}
+<ul>
+<li><b>The latency target holds in the cloud:</b> p95 {RW['client_p95_ms']:.0f} ms from India, of which about {RW['client_p50_ms'] - RW['server_p50_ms']:.0f} ms (median) is the network. Server time is ~2.5× the laptop's because the free instance gets only a small share of one CPU.</li>
+<li><b>Scale-to-zero has a price:</b> after 15 idle minutes the free instance sleeps; the next visitor waits about a minute. The dashboard shows a "waking the backend" screen with a timer instead of failing, and the API loads its models once at start-up so every later request is fast. A paid instance (always on) or a minimum-instances setting would remove the wait; this is the classic cost vs latency trade-off of serverless containers (RQ8).</li>
+<li><b>Memory fits:</b> {RND['rss_mb']['gateway']:.0f} MB idle, and a 24,000-row analysis peaked at 436 MB in local tests, inside the 512 MB limit, thanks to the Phase 8 memory work (fast path, allocator settings) and Phase 9b's result limits.</li>
+</ul>
+<h2>Problems met during deployment and their fixes</h2>
+{table([
+ ["The deployed dashboard called http://localhost:8000", "Vite compiles VITE_API_BASE_URL into the static files at build time; it was missing when Vercel built", "Set the variable in Vercel and redeploy (a runtime change cannot fix a static build)"],
+ ["Stuck on 'Waking the backend…' although Render logged GET /health 200", "CORS: the Vercel domain was not in the allow-list, so the browser discarded the responses (preflight 400)", "Add the exact origin (https, no trailing slash) to FINSIGHT_CORS_ORIGINS"],
+ ["HTTP 502 right after a settings change", "Render was swapping in the redeployed instance", "Wait until the service shows Live"],
+ ["Demo analysis took ~35 s on every click", "The free instance's small CPU share", "Cache the demo results in memory (0.09 s on repeat); the page tells visitors the first run takes ~30 s"],
+], ["Symptom", "Cause", "Fix"], "small", widths=["30%", "40%", "30%"])}
+<p>These are typical cloud-engineering lessons: build-time vs run-time configuration, browser security (same-origin policy and CORS) between two providers, rolling deployments, and designing for constrained, shared compute.</p>
 <h3>Why this is cloud computing (and why not only AWS / GCP / Azure)</h3>
 <p>Cloud computing is defined by its <b>service model</b>, not by a particular vendor. The NIST definition (SP 800-145) lists five essential characteristics; the deployment has all of them:</p>
 {table([
  ["On-demand self-service", "Deploys are triggered by a Git push or the render.yaml Blueprint; no hardware, no tickets"],
  ["Broad network access", "Public HTTPS API; the dashboard is served from Vercel's global edge CDN"],
- ["Resource pooling", "Multi-tenant container hosts (Render, Cloud Run) and a shared edge network (Vercel)"],
- ["Rapid elasticity", "Scale-to-zero when idle and wake on request; horizontal scaling (Compose --scale, Cloud Run autoscaling)"],
- ["Measured service", "Metered instance-hours (Render), vCPU-seconds and requests (Cloud Run), bandwidth (Vercel); free-tier quotas"],
+ ["Resource pooling", "Multi-tenant container hosts (Render) and a shared edge network (Vercel)"],
+ ["Rapid elasticity", "Scale-to-zero when idle and wake on request (measured: " + f"{RC['seconds_to_healthy']:.0f}" + " s); horizontal scaling (Compose --scale ml-service=3, measured in Ch. 14)"],
+ ["Measured service", "Metered instance-hours (Render: 750 free per month), bandwidth and build minutes (Vercel); free-tier quotas"],
 ], ["NIST characteristic", "FinSight implementation"], "small", widths=["28%", "72%"])}
 {table([
- ["IaaS", "Virtual machines, networks, disks", "Not used directly; Render, Vercel and Cloud Run run on hyperscaler IaaS underneath. Discussed as the VM-vs-container comparison"],
- ["PaaS / CaaS", "Run my container or app; platform handles servers, TLS, scaling", "Render web services; Google Cloud Run; Vercel (static hosting + CDN)"],
+ ["IaaS", "Virtual machines, networks, disks", "Not used directly; Render and Vercel run on hyperscaler IaaS underneath. Discussed as the VM-vs-container comparison"],
+ ["PaaS / CaaS", "Run my container or app; platform handles servers, TLS, scaling", "Render web services (container PaaS); Vercel (static hosting + CDN); Google Cloud Run as the documented alternative"],
  ["FaaS (serverless functions)", "Run a function per request", "Available on Vercel; not needed (the API is a container), discussed as an alternative"],
  ["SaaS", "Finished software over the web", "The FinSight scoring API and dashboard themselves; GitHub (code, CI, releases)"],
 ], ["Service model", "Meaning", "In FinSight"], "small", widths=["16%", "34%", "50%"])}
-<p><b>Why Render + Vercel as the primary platform:</b> both have free tiers without a credit card, so every team member can deploy and demo. Platform services let the project spend its effort on architecture (microservices, REST, containers, Infrastructure as Code, CI/CD) rather than server administration. The free-tier limits (scale-to-zero cold starts, no private networking, ~512 MB RAM, a 30 s proxy timeout) are real cloud-engineering constraints, and the design responses above are part of the CCT contribution.</p>
-<p><b>Portability experiment (D-028):</b> because every service is a standard Docker image, the same backend image is also deployed to <b>Google Cloud Run</b> (Mumbai region, scale-to-zero) via Artifact Registry. Both deployments are measured with the same script (cold start, warm p50/p95 latency, memory, image size) and their cost models are compared (Render's instance-hours vs Cloud Run's per-request vCPU-seconds). "One image, two clouds" shows that the architecture is not locked to any vendor, and it brings a hyperscaler into the evaluation.</p>
+<p><b>Why Render + Vercel:</b> both have free tiers without a credit card, so every team member can deploy and demo. Platform services let the project spend its effort on architecture (microservices, REST, containers, Infrastructure as Code, CI/CD) rather than server administration. The free-tier limits (scale-to-zero cold starts, no private networking, 512 MB RAM, a small CPU share) are real cloud-engineering constraints, and the design responses here are part of the CCT contribution.</p>
+<h3>Hyperscaler portability: Google Cloud Run (documented, not deployed; D-038)</h3>
+<p>The original plan (D-028) also deployed the same image to Google Cloud Run for a measured comparison. Cloud Run requires a billing account with a payment card even inside its free tier, so the team decided not to risk real charges. The portability argument rests on what <i>was</i> done: the one Docker image already runs unchanged in three environments (Docker Compose locally, a 512 MB smoke test on GitHub Actions, and Render), and it reads all configuration from environment variables. <code>deploy/cloudrun.sh</code> (Artifact Registry push, then <code>gcloud run deploy</code> with 512 MiB, 0–2 instances, Mumbai) and <code>deploy/k8s/finsight.yaml</code> (Deployment, Service, HorizontalPodAutoscaler) are ready to run.</p>
+{table([
+ ["Billing unit", "Instance-hours (750 free per month); a sleeping service uses none", "vCPU-seconds, GiB-seconds and requests, only while handling requests"],
+ ["Free tier", "512 MB, small CPU share, no card", "2 M requests, 180,000 vCPU-s, 360,000 GiB-s per month; card required"],
+ ["Idle behaviour", "Sleeps after 15 min; cold start measured at ~1 min", "Scales to zero; min-instances (paid) avoids cold starts"],
+ ["Scaling", "Manual or paid autoscaling", "Automatic, per-request concurrency"],
+ ["Region near India", "Singapore", "Mumbai (asia-south1)"],
+ ["Lock-in", "Plain Docker + env vars: none", "Plain Docker + env vars: none"],
+], ["", "Render (deployed)", "Google Cloud Run (documented)"], "small", widths=["18%", "41%", "41%"])}
 <h3>Free-tier constraints and design responses</h3>
 {table([
- ["Render free web services can't receive private-network traffic", "Inter-service calls use HTTPS + a shared secret header (X-Internal-Key)"],
- ["Services sleep after 15 min idle; waking takes up to ~1 min", "Dashboard shows a 'waking the backend' state and polls /health; cold vs warm latency measured as a CCT result"],
+ ["Render free web services can't receive private-network traffic", "One inprocess container by default; in the five-service variant, HTTPS + a shared secret header (X-Internal-Key)"],
+ ["Services sleep after 15 min idle; waking takes ~1 min (measured)", "Wake-up screen that polls /health; models loaded once at start-up"],
  ["750 free instance-hours per workspace per month", "Sleeping services use no hours, so the demo fits"],
- ["~512 MB RAM per free instance", "Memory-aware model choice; native TreeSHAP; target < 450 MB"],
- ["Vercel proxy (rewrite) timeout is 30 s", "The SPA calls Render directly with a CORS allow-list, not through a rewrite"],
+ ["512 MB RAM per free instance", "Numpy fast path, allocator settings, ≤ 2 stored analyses, memory released after each run"],
+ ["Small CPU share", "Demo results cached; analyses processed in chunks; page states the expected wait"],
+ ["Two providers, two origins", "The SPA calls Render directly with a CORS allow-list (no proxy, so no proxy timeout)"],
 ], ["Constraint", "Design response"], "small", widths=["45%", "55%"])}
-<p><b>Two service modes from one codebase</b> (<code>FINSIGHT_SERVICE_MODE</code>): <i>remote</i> runs five services talking over HTTP (Docker Compose locally, and an optional five-service Render Blueprint), which is the microservices demonstration. <i>inprocess</i> runs the gateway with the four modules imported directly, giving one Render service and one cold start (the default free deployment). Measuring both answers part of RQ8: the latency and cold-start cost of microservices versus a modular monolith.</p>
+<p><b>Two service modes from one codebase</b> (<code>FINSIGHT_SERVICE_MODE</code>): <i>remote</i> runs five services talking over HTTP (Docker Compose locally, and the optional five-service Render Blueprint), which is the microservices demonstration. <i>inprocess</i> runs the gateway with the four modules imported directly, giving one Render service and one cold start (the free deployment). Ch. 14 measured both locally: equal single-client latency, half the memory for the monolith. That, plus the cold-start measurement above, answers RQ8.</p>
+<p>Acceptance criteria met: the public Vercel URL loads and scores transactions through Render ✔; internal endpoints reject calls without the key ✔ (tested); warm p95 under 200 ms from India ✔; memory under 512 MB ✔.</p>
 </section>
 """)
 
@@ -997,7 +1079,7 @@ add(f"""
  ["Cluster analysis", "K-Means (elbow, silhouette, Davies–Bouldin), DBSCAN, cluster profiling, ARI", "✔"],
  ["Outlier analysis", "DBSCAN noise; Isolation Forest, One-class SVM, autoencoder", "✔"],
  ["Big-data wrangling", "Polars lazy pipelines on 6.36M PaySim rows (mining + anomaly scale tracks)", "✔"],
- ["IEEE-CIS missingness profiling", "transaction ⋈ identity", "planned"],
+ ["IEEE-CIS missingness profiling", "transaction ⋈ identity", "not done (optional)"],
 ], ["Topic", "Where in FinSight", "Status"], "small", widths=["36%", "52%", "12%"])}
 <h2>Machine Learning</h2>
 {table([
@@ -1014,23 +1096,23 @@ add(f"""
 ], ["Topic", "Where in FinSight", "Status"], "small", widths=["36%", "52%", "12%"])}
 <h2>Cloud Computing &amp; Technology</h2>
 {table([
- ["Cloud definition (NIST 5 characteristics)", "self-service deploys, HTTPS + CDN, pooled hosts, scale-to-zero, metered free tiers (Ch. 16)", "designed"],
- ["Service models (IaaS / PaaS / SaaS / FaaS)", "Render + Cloud Run = container PaaS; Vercel = frontend PaaS + CDN; FinSight API as SaaS", "designed"],
- ["Multi-cloud / portability, vendor lock-in", "same Docker image on Render and Google Cloud Run, measured side by side", "planned (10)"],
+ ["Cloud definition (NIST 5 characteristics)", "Git-push deploys, HTTPS + CDN, pooled hosts, scale-to-zero (cold start measured), metered free tiers (Ch. 16)", "✔"],
+ ["Service models (IaaS / PaaS / SaaS / FaaS)", "Render = container PaaS; Vercel = frontend PaaS + CDN; FinSight API as SaaS; FaaS and IaaS discussed", "✔"],
+ ["Multi-cloud / portability, vendor lock-in", "one Docker image runs unchanged on Compose, CI and Render; Cloud Run and Kubernetes scripts ready (not deployed, D-038)", "✔ (partly)"],
  ["Virtualisation and containers", "multi-stage Dockerfile for 5 services; slim non-root images; image size measured", "✔"],
  ["Microservices and API gateway", "gateway + 4 services; inprocess vs remote modes, identical results, measured", "✔"],
  ["REST and OpenAPI", "14 public endpoints, Pydantic schemas, Swagger UI at /docs", "✔"],
  ["Orchestration", "Docker Compose with health checks, depends_on, --scale ml-service=3; conceptual Kubernetes", "✔ (Compose)"],
  ["Performance and load testing", "profiling-driven optimisation; Locust load tests; p50/p95/p99", "✔"],
- ["CDN / edge", "static SPA (60 KB first load, hashed assets cached a year) for Vercel's edge network", "✔ built; deploy in 10"],
- ["CI/CD, GitOps", "GitHub Actions tests; auto-deploy on push; preview deployments", "planned (10)"],
- ["Infrastructure as Code", "render.yaml Blueprint, vercel.json, docker-compose.yml", "planned (10)"],
- ["Artifact registry / storage", "versioned, checksummed bundle; GitHub Release publishing script; fsspec storage layer", "✔ (publish in 10)"],
+ ["CDN / edge", "static SPA (250 KB first load incl. self-hosted fonts, hashed assets cached a year) live on Vercel's edge network", "✔"],
+ ["CI/CD, GitOps", "GitHub Actions: tests, dashboard build, image build + 512 MB smoke test; auto-deploy on push", "✔"],
+ ["Infrastructure as Code", "render.yaml Blueprint (deployed), render-full.yaml, vercel.json, docker-compose.yml, k8s manifests", "✔"],
+ ["Artifact registry / storage", "versioned, checksummed bundle published as GitHub Releases; downloaded at image build", "✔"],
  ["Portable model format", "ONNX autoencoder served with onnxruntime (no PyTorch in the image)", "✔ (6)"],
- ["Elasticity, scale-to-zero, cost", "Render spin-down vs cold start; locust load test", "planned (10)"],
- ["Security", "internal shared key (401 tested), private network, CORS allow-list (tested), non-root images, env secrets; HTTPS on the platforms", "✔ (HTTPS in 10)"],
+ ["Elasticity, scale-to-zero, cost", "Render scale-to-zero vs measured cold start; locust load test; Compose scaling", "✔"],
+ ["Security", "internal shared key (401 tested), private network, CORS allow-list (tested and debugged live), non-root images, generated secrets; HTTPS on both platforms", "✔"],
  ["Observability", "structured JSON logs, request-ID propagation, /metrics percentiles, /platform/status", "✔ (incl. Platform page)"],
- ["Cloud-native principles", "12-factor configuration, stateless services, immutable images", "designed"],
+ ["Cloud-native principles", "12-factor configuration (env vars, build vs run time), stateless services, immutable images", "✔"],
 ], ["Topic", "Where in FinSight", "Status"], "small", widths=["36%", "50%", "14%"])}
 </section>
 """)
@@ -1039,7 +1121,7 @@ add(f"""
 add(f"""
 <section>
 <h1>Conclusions, limitations and future work</h1>
-<h2>Conclusions so far</h2>
+<h2>Conclusions</h2>
 <ol>
 <li><b>Audit before you model.</b> The original dataset contained label proxies that would have produced near-perfect but meaningless models, and its "network" scenarios had no network. Finding this first changed the project's direction and is a central data-mining result.</li>
 <li><b>Data engineering can be done honestly.</b> The v1.1 injection is seeded, logged, tested and validated against a control. Mining and ML both rediscover exactly the injected structure and nothing on v1.0.</li>
@@ -1052,6 +1134,8 @@ add(f"""
 <li><b>Measure, then optimise.</b> The first working service missed the latency target in practice (138 ms median in-process); profiling located the cost in per-request sklearn overhead, and a tested numpy fast path brought it to 21 ms with identical outputs. The load test found a different bottleneck (sanctions screening), which caching removed.</li>
 <li><b>Without labels you get triage, not detection.</b> Clustering finds interpretable risk groups (bursts, hubs, unusual flows) but with weak structure. Anomaly detectors trained on legitimate data reach PR-AUC ≈ 0.55 vs 0.875 supervised; they add a complementary signal that recovers a quarter of the supervised model's misses.</li>
 <li><b>Anomalous is not the same as fraudulent.</b> Anomaly detectors flag ~80% of BORDERLINE (unusual but legitimate) transactions, the same group the supervised model struggles with.</li>
+<li><b>A system is convincing when it runs on new data.</b> The live analysis reproduces the training features exactly and catches simulated organised attacks it never saw as rows (100% plain; 90–100% camouflaged except shared devices at ~63%), at about 1.4% false alerts.</li>
+<li><b>Free cloud tiers are enough for a real ML service, with trade-offs.</b> The deployed API answers in {RW['client_p95_ms']:.0f} ms (p95) from India within 512 MB, but scale-to-zero costs a ~1 minute cold start, and configuration across two providers (build-time API address, CORS) caused the only deployment failures.</li>
 <li><b>Label ambiguity is the main remaining error.</b> BORDERLINE cases cause most false positives and are only half-separable even as their own class. A "review" tier is more honest than forcing a binary decision.</li>
 </ol>
 <h2>Limitations and threats to validity</h2>
@@ -1066,7 +1150,7 @@ add(f"""
 <li><b>Clustering in 63 dimensions</b> is dominated by distance concentration (silhouette ≤ 0.16); the cluster findings are descriptive, not a validated segmentation.</li>
 </ul>
 <h2>Future work</h2>
-<p>Complete phases 9–10. Beyond the course: graph neural networks over the account graph; streaming scoring (Kafka) with online graph updates; drift monitoring; human-in-the-loop review of BORDERLINE cases; evaluation on real, consented bank data.</p>
+<p>Deploy the same image to Google Cloud Run (or Kubernetes) for a measured multi-cloud comparison; an always-on instance or a job queue for larger uploads. Beyond the course: graph neural networks over the account graph; streaming scoring (Kafka) with online graph updates; drift monitoring; human-in-the-loop review of BORDERLINE cases; evaluation on real, consented bank data.</p>
 </section>
 """)
 
@@ -1088,7 +1172,7 @@ add(f"""
  ["13", "Control: v1.0 vs v1.1 rules", "mining_06_item_share_v10_v11"], ["14", "Rules as a detector vs ML", "mining_07_detector_curve, ml_03_pr_roc_expC"],
  ["15", "Cluster analysis: K-Means profiles + DBSCAN outliers", "unsup_02_cluster_composition, unsup_04_dbscan"],
  ["16", "Big data: PaySim 6.36M rows with Polars", "mining_03_paysim_scaling, unsup_10_paysim_if"],
- ["17", "Live: data quality, pattern lab and transaction explorer pages", "dashboard_02_data_quality, dashboard_04_patterns, dashboard_03_transactions (Ch. 15)"],
+ ["17", "Live: data quality, pattern lab and transaction explorer pages; analysing an uploaded CSV (validation, defaults, rules among alerts)", "dashboard_02_data_quality, dashboard_04_patterns, dashboard_10_analyze (Ch. 15)"],
  ["18", "Conclusions and limitations", "Ch. 18"],
 ], ["Slide", "Content", "Figure / source"], "small", widths=["8%", "52%", "40%"])}
 <p><b>One-line pitch:</b> "FinSight AI follows the full KDD process across five heterogeneous sources; our audit found label leakage and fraud scenarios that were never encoded in the graph. We fixed and validated that with a seeded augmentation step, then mined behaviour patterns with Apriori and FP-Growth and benchmarked both."</p>
@@ -1111,26 +1195,26 @@ add(f"""
  ["19", "Stacking (no gain) and calibration", "final_03_calibration, final_04_test_comparison"],
  ["20", "Final model and the 0–100 risk score with tiers", "Ch. 13 final table, final_06_risk_score"],
  ["21", "Explainability: SHAP global, beeswarm, two local explanations", "final_07_importance, final_08_shap_beeswarm, final_09_local_explanations"],
- ["22", "Live demo: risk scorer with a what-if change; ML lab; clustering page", "dashboard_08_risk_scorer, dashboard_05_ml_lab, dashboard_06_clusters (Ch. 15)"],
+ ["22", "Live demo: attack simulator (plain vs camouflaged); risk scorer with a what-if change; ML lab", "dashboard_11_simulation, dashboard_08_risk_scorer, dashboard_05_ml_lab (Ch. 15)"],
  ["23", "Conclusions", "Ch. 18"],
 ], ["Slide", "Content", "Figure / source"], "small", widths=["8%", "52%", "40%"])}
 <p><b>One-line pitch:</b> "We trained 6 classifiers across 3 feature sets on two dataset versions and used paired cross-validation to show that network features help only where real network structure exists. the tuned, calibrated XGBoost reaches PR-AUC {FT['test_pr_auc']:.2f} and F1 {FT['test_f1']:.2f}, stacking didn't beat it, and SMOTE didn't help. Without labels, clustering finds interpretable risk groups and legit-only anomaly detectors reach PR-AUC ≈ 0.55 while adding a complementary signal."</p>
 <h2>19.3 Cloud Computing &amp; Technology</h2>
-<p><b>Report outline:</b> Introduction (Ch. 2) → Requirements and service models → Architecture, microservices vs monolith (Ch. 14) → Containers and the model registry (Ch. 14) → REST API design (Ch. 14) → Security and observability (Ch. 14) → Local evaluation: latency, memory, load, scaling (Ch. 14) → Frontend as a static CDN app (Ch. 15) → Deployment on Vercel + Render, constraints, NIST framing (Ch. 16) → CI/CD and IaC → Cloud evaluation: cold start, Render vs Cloud Run (Phase 10) → Conclusions (Ch. 18).</p>
+<p><b>Report outline:</b> Introduction (Ch. 2) → Requirements and service models → Architecture, microservices vs monolith (Ch. 14) → Containers and the model registry (Ch. 14) → REST API design (Ch. 14) → Security and observability (Ch. 14) → Local evaluation: latency, memory, load, scaling (Ch. 14) → Frontend as a static CDN app (Ch. 15) → Deployment on Vercel + Render, constraints, NIST framing (Ch. 16) → Live deployment, CI/CD and IaC (Ch. 16) → Cloud evaluation: latency, memory, cold start, deployment problems (Ch. 16) → Portability and the Cloud Run alternative (Ch. 16) → Conclusions (Ch. 18).</p>
 {table([
  ["1", "Title + pitch", "—"], ["2", "What the platform does (ML + mining as a service)", "Ch. 1"],
  ["3", "Is this cloud? NIST's 5 characteristics + service models (why Render/Vercel, not only AWS/GCP)", "Ch. 16 'Why this is cloud computing' tables"], ["4", "Architecture: gateway + 4 services + SPA", "Ch. 14 flow diagram"],
  ["5", "REST endpoints and OpenAPI", "Ch. 14 endpoint table"], ["6", "Containers: multi-stage Dockerfile, slim non-root images, image sizes", "Ch. 14 containers table"],
  ["7", "Deployment topology: Vercel CDN → Render containers", "Ch. 16 deployment table"], ["8", "Free-tier constraints → design responses", "Ch. 16 constraints table"],
  ["9", "Microservices vs modular monolith: same code, measured", "Ch. 14 mode table + platform_01_phase8"], ["10", "Model registry (versioned bundle), CI/CD, IaC; ONNX as a portable model format", "Ch. 14, Ch. 12 (ONNX)"],
- ["11", "Load test + horizontal scaling (--scale ml-service=3); profiling-driven optimisation", "platform_01_phase8, Ch. 14 load table"], ["11a", "Scale-to-zero vs cold start on Render", "Phase 10 measurements"],
- ["11b", "Portability: same image on Render vs Google Cloud Run (latency, cold start, cost model)", "Phase 10 measurements (D-028)"], ["12", "Security and observability (internal key, CORS, request IDs, /metrics)", "Ch. 14"],
+ ["11", "Load test + horizontal scaling (--scale ml-service=3); profiling-driven optimisation", "platform_01_phase8, Ch. 14 load table"], ["11a", "Live measurements: warm latency, memory, scale-to-zero vs cold start", "Ch. 16 measurements table"],
+ ["11b", "Portability: one image, many environments; Render vs Cloud Run cost models; deployment problems and fixes", "Ch. 16 tables"], ["12", "Security and observability (internal key, CORS, request IDs, /metrics)", "Ch. 14"],
  ["12b", "Frontend on a CDN: static SPA, cold-start handling, CORS", "Ch. 15 design decisions, dashboard_09_platform"],
- ["13", "Live demo (Vercel URL; local: make serve + make dashboard)", "dashboard_08_risk_scorer, dashboard_09_platform"], ["14", "Conclusions", "Ch. 18"],
+ ["13", "Live demo: Analyze page (attack simulator), Platform page", "dashboard_11_simulation, dashboard_09_platform"], ["14", "Conclusions", "Ch. 18"],
 ], ["Slide", "Content", "Figure / source"], "small", widths=["8%", "52%", "40%"])}
-<p><b>One-line pitch:</b> "Five stateless FastAPI microservices in Docker, deployed on Render from a Blueprint, with a React dashboard served from Vercel's CDN. Artifacts are versioned as GitHub Releases and baked into immutable images, deploys are triggered by Git pushes, and we measure the scale-to-zero vs cold-start trade-off."</p>
+<p><b>One-line pitch:</b> "Five stateless FastAPI microservices in Docker, deployed on Render from a Blueprint, with a React dashboard served from Vercel's CDN. Artifacts are versioned as GitHub Releases and baked into immutable images, deploys are triggered by Git pushes, and we measured the scale-to-zero vs cold-start trade-off live (p95 {RW['client_p95_ms']:.0f} ms warm, ~1 min cold)."</p>
 <h2>Suggested live-demo flow</h2>
-<ol><li>Dataset overview and the audit story (leakage, missing network).</li><li>v1.0 → v1.1: a fraud ring and a layering chain.</li><li>Top association rules; Apriori vs FP-Growth memory.</li><li>A → B → C improvement; v1.0 control.</li><li>A BORDERLINE example and why it's hard.</li><li>Clusters in t-SNE and an anomaly score that flags a new-device fraud the rules don't know.</li><li>Risk scorer page: score the mule example (100, CRITICAL), then set the amount to ₹500 and watch the score and reasons change.</li><li>Network explorer: open the top PageRank account and show the fan-in of fraudulent payments.</li><li>Platform page: services, wake-up time and the live latency probe (cloud numbers after Phase 10).</li></ol>
+<ol><li>Open the live dashboard a minute early (the free API sleeps). Start on the Analyze page: run the demo sample, then simulate a fraud ring + mule chain, then the same with camouflage; open an alert to show its reasons.</li><li>Dataset overview and the audit story (leakage, missing network).</li><li>v1.0 → v1.1: a fraud ring and a layering chain.</li><li>Top association rules; Apriori vs FP-Growth memory.</li><li>A → B → C improvement; v1.0 control.</li><li>A BORDERLINE example and why it's hard.</li><li>Clusters in t-SNE and an anomaly score that flags a new-device fraud the rules don't know.</li><li>Risk scorer page: score the mule example (100, CRITICAL), then set the amount to ₹500 and watch the score and reasons change.</li><li>Network explorer: open the top PageRank account and show the fan-in of fraudulent payments.</li><li>Platform page: services, this visit's wake-up time and the live latency probe from the cloud.</li></ol>
 </section>
 """)
 
